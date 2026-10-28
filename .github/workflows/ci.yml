@@ -149,6 +149,16 @@ jobs:
             .\xbuild.bat arm64 installer
           }
 
+      - name: Validate TSF host exception filter (Windows x64 runtime)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & cl.exe /nologo /std:c++17 /EHsc /W4 /WX test\tsf_host_filter_test.cpp /Fe:tsf_host_filter_test.exe
+          if ($LASTEXITCODE -ne 0) { throw "TSF host-filter test compilation failed" }
+          $dll = (Resolve-Path '.\output\weaselx64.dll').Path
+          & .\tsf_host_filter_test.exe $dll
+          if ($LASTEXITCODE -ne 0) { throw "TSF host-filter runtime acceptance failed" }
+
       - name: Compress Debug Symbols
         if: matrix.variant == 'msbuild'
         shell: pwsh
