@@ -114,8 +114,8 @@ STDMETHODIMP WeaselTSF::Deactivate() {
   _UninitThreadFocusSink();
   _UninitThreadMgrEventSink();
   _UninitPreservedKey();
-  _UninitLanguageBar();
-  _UninitCompartment();
+  const BOOL languageBarReleased = _UninitLanguageBar();
+  const BOOL compartmentReleased = _UninitCompartment();
 
   _prevKeyEvent = weasel::KeyEvent();
   _prevfEaten = FALSE;
@@ -126,7 +126,8 @@ STDMETHODIMP WeaselTSF::Deactivate() {
 
   // Retain the COM manager and any outstanding cookies if Unadvise fails.
   // A subsequent Deactivate() may retry, without touching freed TSF state.
-  if (!textSinkReleased || _keyEventSinkAdvised ||
+  if (!textSinkReleased || !languageBarReleased || !compartmentReleased ||
+      _keyEventSinkAdvised ||
       _dwThreadFocusSinkCookie != TF_INVALID_COOKIE ||
       _dwThreadMgrEventSinkCookie != TF_INVALID_COOKIE)
     return E_FAIL;
@@ -282,6 +283,8 @@ bool WeaselTSF::_EnsureServerConnected() {
     return false;
   _serviceLaunchAttempted = true;
 
+  // Resolve path before acquiring the mutex: allocation may throw.
+  const std::wstring dir = _GetRootDir();
   HANDLE hMutex = CreateMutexW(NULL, TRUE, L"WeaselDeployerExclusiveMutex");
   if (hMutex == NULL)
     return false;
@@ -304,7 +307,6 @@ bool WeaselTSF::_EnsureServerConnected() {
       return count;
     };
     if (countServerProcesses() == 0) {
-      const std::wstring dir = _GetRootDir();
       ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),
                     NULL, dir.c_str(), SW_HIDE);
     }

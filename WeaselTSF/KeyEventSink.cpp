@@ -30,6 +30,8 @@ void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
       else if (ke.keycode == ibus::Down)
         ke.keycode = ibus::Up;
     }
+    if (_keyCountToSimulate && ke.keycode != ibus::Caps_Lock)
+      _keyCountToSimulate = 0;  // Do not suppress unrelated physical keys.
     if (!_keyCountToSimulate)
       *pfEaten = (BOOL)m_client.ProcessKeyEvent(ke);
     else
@@ -40,13 +42,13 @@ void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
           (ke.mask & ibus::RELEASE_MASK) && (!_keyCountToSimulate)) {
         if ((GetKeyState(VK_CAPITAL) & 0x01)) {
           if (_committed || (!*pfEaten && _status.composing)) {
-            _keyCountToSimulate = 2;
-            INPUT inputs[2];
+            INPUT inputs[2] = {};
             inputs[0].type = INPUT_KEYBOARD;
             inputs[0].ki = {VK_CAPITAL, 0, 0, 0, 0};
             inputs[1].type = INPUT_KEYBOARD;
             inputs[1].ki = {VK_CAPITAL, 0, KEYEVENTF_KEYUP, 0, 0};
-            ::SendInput(sizeof(inputs) / sizeof(INPUT), inputs, sizeof(INPUT));
+            _keyCountToSimulate = static_cast<int>(
+                ::SendInput(sizeof(inputs) / sizeof(INPUT), inputs, sizeof(INPUT)));
           }
         }
         *pfEaten = TRUE;

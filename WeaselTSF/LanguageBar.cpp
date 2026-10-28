@@ -386,17 +386,18 @@ BOOL WeaselTSF::_InitLanguageBar() {
   return fRet;
 }
 
-void WeaselTSF::_UninitLanguageBar() {
+BOOL WeaselTSF::_UninitLanguageBar() {
+  if (_pLangBarButton == nullptr)
+    return TRUE;
+  if (_pThreadMgr == nullptr)
+    return FALSE;
   com_ptr<ITfLangBarItemMgr> pLangBarItemMgr;
-
-  if (_pLangBarButton == NULL)
-    return;
-
-  if (_pThreadMgr->QueryInterface(&pLangBarItemMgr) == S_OK) {
-    pLangBarItemMgr->RemoveItem(_pLangBarButton);
-  }
-
-  _pLangBarButton = NULL;
+  if (_pThreadMgr->QueryInterface(&pLangBarItemMgr) != S_OK)
+    return FALSE;
+  if (FAILED(pLangBarItemMgr->RemoveItem(_pLangBarButton)))
+    return FALSE;
+  _pLangBarButton = nullptr;
+  return TRUE;
 }
 
 void WeaselTSF::_UpdateLanguageBar(weasel::Status stat) {

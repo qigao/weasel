@@ -181,7 +181,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   void _UninitPreservedKey();
 
   BOOL _InitLanguageBar();
-  void _UninitLanguageBar();
+  BOOL _UninitLanguageBar();
   void _UpdateLanguageBar(weasel::Status stat);
   void _ShowLanguageBar(BOOL show);
   void _EnableLanguageBar(BOOL enable);
@@ -191,7 +191,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   void _DeleteCandidateList();
 
   BOOL _InitCompartment();
-  void _UninitCompartment();
+  BOOL _UninitCompartment();
   HRESULT _HandleCompartment(REFGUID guidCompartment);
 
   void _Reconnect();
