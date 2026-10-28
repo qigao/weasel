@@ -49,6 +49,9 @@ STDMETHODIMP CCompartmentEventSink::OnChange(_In_ REFGUID guidCompartment) {
 
 HRESULT CCompartmentEventSink::_Advise(_In_ com_ptr<IUnknown> punk,
                                        _In_ REFGUID guidCompartment) {
+  if (punk == nullptr || _cookie != TF_INVALID_COOKIE ||
+      _compartment != nullptr)
+    return E_INVALIDARG;
   HRESULT hr = S_OK;
   ITfCompartmentMgr* pCompartmentMgr = nullptr;
   ITfSource* pSource = nullptr;
@@ -68,22 +71,31 @@ HRESULT CCompartmentEventSink::_Advise(_In_ com_ptr<IUnknown> punk,
   }
 
   pCompartmentMgr->Release();
-
+  if (FAILED(hr)) {
+    _cookie = TF_INVALID_COOKIE;
+    _compartment = nullptr;
+  }
   return hr;
 }
+
 HRESULT CCompartmentEventSink::_Unadvise() {
-  HRESULT hr = S_OK;
-  ITfSource* pSource = nullptr;
-
-  hr = _compartment->QueryInterface(IID_ITfSource, (void**)&pSource);
-  if (SUCCEEDED(hr)) {
-    hr = pSource->UnadviseSink(_cookie);
-    pSource->Release();
+  if (_cookie == TF_INVALID_COOKIE) {
+    _compartment = nullptr;
+    return S_OK;
   }
-
-  _compartment = nullptr;
-  _cookie = 0;
-
+  if (_compartment == nullptr)
+    return E_UNEXPECTED;
+  com_ptr<ITfSource> pSource;
+  const HRESULT queryResult = _compartment->QueryInterface(&pSource);
+  if (FAILED(queryResult))
+    return queryResult;
+  const HRESULT hr = pSource->UnadviseSink(_cookie);
+  if (SUCCEEDED(hr) || hr == CONNECT_E_NOCONNECTION) {
+    _cookie = TF_INVALID_COOKIE;
+    _compartment = nullptr;
+    return S_OK;
+  }
+  // The source may still hold the callback; preserve the cookie and target.
   return hr;
 }
 
@@ -215,30 +227,48 @@ HRESULT WeaselTSF::_SetCompartmentDWORD(const DWORD& value, const GUID guid) {
 BOOL WeaselTSF::_InitCompartment() {
   using namespace std::placeholders;
 
+  if (_pKeyboardCompartmentSink || _pConvertionCompartmentSink)
+    return FALSE;
   auto callback = std::bind(&WeaselTSF::_HandleCompartment, this, _1);
   _pKeyboardCompartmentSink = new CCompartmentEventSink(callback);
   if (!_pKeyboardCompartmentSink)
     return FALSE;
-  DWORD hr = _pKeyboardCompartmentSink->_Advise(
+  HRESULT hr = _pKeyboardCompartmentSink->_Advise(
       (IUnknown*)_pThreadMgr, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+  if (FAILED(hr)) {
+    _pKeyboardCompartmentSink = nullptr;
+    return FALSE;
+  }
 
   _pConvertionCompartmentSink = new CCompartmentEventSink(callback);
   if (!_pConvertionCompartmentSink)
     return FALSE;
   hr = _pConvertionCompartmentSink->_Advise(
       (IUnknown*)_pThreadMgr, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
-  return SUCCEEDED(hr);
+  if (FAILED(hr)) {
+    _pConvertionCompartmentSink = nullptr;
+    if (SUCCEEDED(_pKeyboardCompartmentSink->_Unadvise()))
+      _pKeyboardCompartmentSink = nullptr;
+    return FALSE;
+  }
+  return TRUE;
 }
 
-void WeaselTSF::_UninitCompartment() {
+BOOL WeaselTSF::_UninitCompartment() {
+  BOOL released = TRUE;
   if (_pKeyboardCompartmentSink) {
-    _pKeyboardCompartmentSink->_Unadvise();
-    _pKeyboardCompartmentSink = NULL;
+    if (SUCCEEDED(_pKeyboardCompartmentSink->_Unadvise()))
+      _pKeyboardCompartmentSink = nullptr;
+    else
+      released = FALSE;
   }
   if (_pConvertionCompartmentSink) {
-    _pConvertionCompartmentSink->_Unadvise();
-    _pConvertionCompartmentSink = NULL;
+    if (SUCCEEDED(_pConvertionCompartmentSink->_Unadvise()))
+      _pConvertionCompartmentSink = nullptr;
+    else
+      released = FALSE;
   }
+  return released;
 }
 
 HRESULT WeaselTSF::_HandleCompartment(REFGUID guidCompartment) {

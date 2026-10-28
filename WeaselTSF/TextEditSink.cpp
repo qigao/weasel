@@ -72,47 +72,56 @@ STDMETHODIMP WeaselTSF::OnLayoutChange(ITfContext* pContext,
 
 BOOL WeaselTSF::_InitTextEditSink(com_ptr<ITfDocumentMgr> pDocMgr) {
   com_ptr<ITfSource> pSource;
-  BOOL fRet;
 
-  /* clear out any previous sink first */
-  if (_dwTextEditSinkCookie != TF_INVALID_COOKIE) {
-    _pTextEditSinkContext->QueryInterface(&pSource);
-    if (pSource != nullptr) {
-      pSource->UnadviseSink(_dwTextEditSinkCookie);
-      pSource->UnadviseSink(_dwTextLayoutSinkCookie);
+  // Release every advised cookie, including a partially installed pair.
+  // Failed Unadvise retains its context and cookie for the next owner call.
+  if (_pTextEditSinkContext != nullptr) {
+    if (_dwTextEditSinkCookie != TF_INVALID_COOKIE ||
+        _dwTextLayoutSinkCookie != TF_INVALID_COOKIE) {
+      if (FAILED(_pTextEditSinkContext->QueryInterface(&pSource)))
+        return FALSE;
+      if (_dwTextEditSinkCookie != TF_INVALID_COOKIE) {
+        const HRESULT hr = pSource->UnadviseSink(_dwTextEditSinkCookie);
+        if (FAILED(hr) && hr != CONNECT_E_NOCONNECTION)
+          return FALSE;
+        _dwTextEditSinkCookie = TF_INVALID_COOKIE;
+      }
+      if (_dwTextLayoutSinkCookie != TF_INVALID_COOKIE) {
+        const HRESULT hr = pSource->UnadviseSink(_dwTextLayoutSinkCookie);
+        if (FAILED(hr) && hr != CONNECT_E_NOCONNECTION)
+          return FALSE;
+        _dwTextLayoutSinkCookie = TF_INVALID_COOKIE;
+      }
     }
     _pTextEditSinkContext = nullptr;
-    _dwTextEditSinkCookie = TF_INVALID_COOKIE;
   }
-  if (pDocMgr == NULL)
-    return TRUE;
 
-  if (pDocMgr->GetTop(&_pTextEditSinkContext) != S_OK)
+  if (pDocMgr == nullptr)
+    return TRUE;
+  if (pDocMgr->GetTop(&_pTextEditSinkContext) != S_OK) {
+    _pTextEditSinkContext = nullptr;
     return FALSE;
-
-  if (_pTextEditSinkContext == NULL)
+  }
+  if (_pTextEditSinkContext == nullptr)
     return TRUE;
-
-  fRet = FALSE;
 
   pSource.Release();
-
-  if (_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void**)&pSource) ==
-      S_OK) {
-    if (pSource->AdviseSink(IID_ITfTextEditSink, (ITfTextEditSink*)this,
-                            &_dwTextEditSinkCookie) == S_OK)
-      fRet = TRUE;
-    else
-      _dwTextEditSinkCookie = TF_INVALID_COOKIE;
-    if (pSource->AdviseSink(IID_ITfTextLayoutSink, (ITfTextLayoutSink*)this,
-                            &_dwTextLayoutSinkCookie) == S_OK) {
-      fRet = TRUE;
-    } else
-      _dwTextLayoutSinkCookie = TF_INVALID_COOKIE;
-  }
-  if (fRet == FALSE) {
+  if (FAILED(_pTextEditSinkContext->QueryInterface(&pSource))) {
     _pTextEditSinkContext = nullptr;
+    return FALSE;
   }
-
-  return fRet;
+  if (FAILED(pSource->AdviseSink(IID_ITfTextEditSink, (ITfTextEditSink*)this,
+                                 &_dwTextEditSinkCookie))) {
+    _dwTextEditSinkCookie = TF_INVALID_COOKIE;
+    _pTextEditSinkContext = nullptr;
+    return FALSE;
+  }
+  if (FAILED(pSource->AdviseSink(IID_ITfTextLayoutSink,
+                                 (ITfTextLayoutSink*)this,
+                                 &_dwTextLayoutSinkCookie))) {
+    _dwTextLayoutSinkCookie = TF_INVALID_COOKIE;
+    (void)_InitTextEditSink(com_ptr<ITfDocumentMgr>());
+    return FALSE;
+  }
+  return TRUE;
 }

@@ -4,10 +4,6 @@
 #include <KeyEvent.h>
 #include "CandidateList.h"
 
-static weasel::KeyEvent prevKeyEvent;
-static BOOL prevfEaten = FALSE;
-static int keyCountToSimulate = 0;
-
 void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
   // when _IsKeyboardDisabled don't eat the key,
   // when keyboard closable and keyboard closed, don't eat the key
@@ -34,31 +30,35 @@ void WeaselTSF::_ProcessKeyEvent(WPARAM wParam, LPARAM lParam, BOOL* pfEaten) {
       else if (ke.keycode == ibus::Down)
         ke.keycode = ibus::Up;
     }
-    if (!keyCountToSimulate)
+    if (_keyCountToSimulate && ke.keycode != ibus::Caps_Lock)
+      _keyCountToSimulate = 0;  // Do not suppress unrelated physical keys.
+    if (!_keyCountToSimulate)
       *pfEaten = (BOOL)m_client.ProcessKeyEvent(ke);
+    else
+      *pfEaten = FALSE;  // Synthetic CapsLock events are not sent to Rime.
 
     if (ke.keycode == ibus::Caps_Lock) {
-      if (prevKeyEvent.keycode == ibus::Caps_Lock && prevfEaten == TRUE &&
-          (ke.mask & ibus::RELEASE_MASK) && (!keyCountToSimulate)) {
+      if (_prevKeyEvent.keycode == ibus::Caps_Lock && _prevfEaten == TRUE &&
+          (ke.mask & ibus::RELEASE_MASK) && (!_keyCountToSimulate)) {
         if ((GetKeyState(VK_CAPITAL) & 0x01)) {
           if (_committed || (!*pfEaten && _status.composing)) {
-            keyCountToSimulate = 2;
-            INPUT inputs[2];
+            INPUT inputs[2] = {};
             inputs[0].type = INPUT_KEYBOARD;
             inputs[0].ki = {VK_CAPITAL, 0, 0, 0, 0};
             inputs[1].type = INPUT_KEYBOARD;
             inputs[1].ki = {VK_CAPITAL, 0, KEYEVENTF_KEYUP, 0, 0};
-            ::SendInput(sizeof(inputs) / sizeof(INPUT), inputs, sizeof(INPUT));
+            _keyCountToSimulate = static_cast<int>(
+                ::SendInput(sizeof(inputs) / sizeof(INPUT), inputs, sizeof(INPUT)));
           }
         }
         *pfEaten = TRUE;
       }
-      if (keyCountToSimulate)
-        keyCountToSimulate--;
+      if (_keyCountToSimulate)
+        _keyCountToSimulate--;
     }
 
-    prevfEaten = *pfEaten;
-    prevKeyEvent = ke;
+    _prevfEaten = *pfEaten;
+    _prevKeyEvent = ke;
   }
 }
 
@@ -68,6 +68,11 @@ STDMETHODIMP WeaselTSF::OnSetFocus(BOOL fForeground) {
   else {
     m_client.FocusOut();
     _AbortComposition();
+    _prevKeyEvent = weasel::KeyEvent();
+    _prevfEaten = FALSE;
+    _keyCountToSimulate = 0;
+    _fTestKeyDownPending = FALSE;
+    _fTestKeyUpPending = FALSE;
   }
 
   return S_OK;
@@ -154,25 +159,26 @@ STDMETHODIMP WeaselTSF::OnPreservedKey(ITfContext* pContext,
 }
 
 BOOL WeaselTSF::_InitKeyEventSink() {
+  if (_pThreadMgr == nullptr || _keyEventSinkAdvised)
+    return FALSE;
   com_ptr<ITfKeystrokeMgr> pKeystrokeMgr;
-  HRESULT hr;
-
   if (_pThreadMgr->QueryInterface(&pKeystrokeMgr) != S_OK)
     return FALSE;
-
-  hr = pKeystrokeMgr->AdviseKeyEventSink(_tfClientId, (ITfKeyEventSink*)this,
-                                         TRUE);
-
-  return (hr == S_OK);
+  const HRESULT hr = pKeystrokeMgr->AdviseKeyEventSink(
+      _tfClientId, (ITfKeyEventSink*)this, TRUE);
+  _keyEventSinkAdvised = hr == S_OK;
+  return _keyEventSinkAdvised ? TRUE : FALSE;
 }
 
 void WeaselTSF::_UninitKeyEventSink() {
+  if (_pThreadMgr == nullptr || !_keyEventSinkAdvised)
+    return;
   com_ptr<ITfKeystrokeMgr> pKeystrokeMgr;
-
   if (_pThreadMgr->QueryInterface(&pKeystrokeMgr) != S_OK)
     return;
-
-  pKeystrokeMgr->UnadviseKeyEventSink(_tfClientId);
+  const HRESULT hr = pKeystrokeMgr->UnadviseKeyEventSink(_tfClientId);
+  if (SUCCEEDED(hr) || hr == CONNECT_E_NOCONNECTION)
+    _keyEventSinkAdvised = false;
 }
 
 BOOL WeaselTSF::_InitPreservedKey() {

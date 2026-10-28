@@ -3,6 +3,7 @@
 #include "Globals.h"
 #include <WeaselIPC.h>
 #include <WeaselIPCData.h>
+#include <KeyEvent.h>
 
 class CCandidateList;
 class CLangBarItemButton;
@@ -180,7 +181,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   void _UninitPreservedKey();
 
   BOOL _InitLanguageBar();
-  void _UninitLanguageBar();
+  BOOL _UninitLanguageBar();
   void _UpdateLanguageBar(weasel::Status stat);
   void _ShowLanguageBar(BOOL show);
   void _EnableLanguageBar(BOOL enable);
@@ -190,7 +191,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   void _DeleteCandidateList();
 
   BOOL _InitCompartment();
-  void _UninitCompartment();
+  BOOL _UninitCompartment();
   HRESULT _HandleCompartment(REFGUID guidCompartment);
 
   void _Reconnect();
@@ -201,13 +202,18 @@ class WeaselTSF : public ITfTextInputProcessorEx,
   }
 
   com_ptr<ITfThreadMgr> _pThreadMgr;
-  TfClientId _tfClientId;
+  TfClientId _tfClientId = TF_CLIENTID_NULL;
   DWORD _dwThreadMgrEventSinkCookie;
 
   com_ptr<ITfContext> _pTextEditSinkContext;
   DWORD _dwTextEditSinkCookie, _dwTextLayoutSinkCookie;
   BYTE _lpbKeyState[256];
   BOOL _fTestKeyDownPending, _fTestKeyUpPending;
+  weasel::KeyEvent _prevKeyEvent;
+  BOOL _prevfEaten = FALSE;
+  int _keyCountToSimulate = 0;
+  bool _keyEventSinkAdvised = false;
+  bool _serviceLaunchAttempted = false;
 
   com_ptr<ITfContext> _pEditSessionContext;
   std::wstring _editSessionText;
@@ -228,7 +234,7 @@ class WeaselTSF : public ITfTextInputProcessorEx,
 
   /* Weasel Related */
   weasel::Client m_client;
-  DWORD _activateFlags;
+  DWORD _activateFlags = 0;
 
   /* IME status */
   weasel::Status _status;
