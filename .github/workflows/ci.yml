@@ -32,6 +32,10 @@ jobs:
         shell: bash
         run: ./clang-format.sh -i
 
+      - name: TSF host-lifecycle source regression
+        shell: bash
+        run: python3 test/tsf_lifetime_source_contract_test.py
+
   build:
     needs: lint
     runs-on: windows-2022
