@@ -82,7 +82,7 @@ jobs:
         shell: bash
         run: |
           ./install_boost.bat
-          ./build.bat boost arm64
+          ./build.bat boost arm64 native
 
       - uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -146,9 +146,9 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ('${{ matrix.variant }}' -eq 'msbuild') {
-            .\build.bat arm64 weasel
+            .\build.bat arm64 native weasel
           } else {
-            .\xbuild.bat arm64 weasel
+            .\xbuild.bat arm64 native weasel
           }
 
       - name: Validate native TSF COM Server (Windows x64)

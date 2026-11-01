@@ -68,6 +68,7 @@ set build_rime=0
 set rime_build_variant=release
 set build_weasel=0
 set build_installer=0
+set build_native_only=0
 set build_arm64=0
 set build_clean=0
 set build_commands=0
@@ -91,6 +92,7 @@ set build_commands=0
   if "%1" == "librime" set build_rime=1
   if "%1" == "weasel" set build_weasel=1
   if "%1" == "installer" set build_installer=1
+  if "%1" == "native" set build_native_only=1
   if "%1" == "arm64" set build_arm64=1
   if "%1" == "clean" set build_clean=1
   if "%1" == "commands" set build_commands=1
@@ -107,6 +109,11 @@ set build_commands=0
   shift
   goto parse_cmdline_options
 :end_parsing_cmdline_options
+
+if %build_native_only% == 1 if %build_installer% == 1 (
+  echo Error: native qualification cannot build an installer.
+  goto error
+)
 
 if %build_weasel% == 0 (
 if %build_boost% == 0 (
@@ -125,10 +132,12 @@ if exist output\weaselserver.exe (
 
 rem build booost
 if %build_boost% == 1 (
+  set native_boost_arg=
+  if %build_native_only% == 1 set native_boost_arg=native
   if %build_arm64% == 1 (
-    call build.bat boost arm64
+    call build.bat boost arm64 %native_boost_arg%
   ) else (
-    call build.bat boost
+    call build.bat boost %native_boost_arg%
   )
   if errorlevel 1 exit /b 1
   cd /d %WEASEL_ROOT%
@@ -161,18 +170,40 @@ rem if to clean
 if %build_clean% == 1 ( goto clean )
 if %build_weasel% == 0 ( goto end )
 
-rem Native product CI: only ARM64 and x64; do not build ARM32, x86
-rem or optional ARM64X packaging as side effects of the TSF gate.
+rem "native" mode qualifies only x64/ARM64. Other build invocations
+rem still retain the former x86/ARM32/ARM64X release outputs.
 if %build_arm64% == 1 (
   xmake f -a arm64 -m %build_config% %build_sdk_option%
   if %build_rebuild% == 1 ( xmake clean )
   xmake
   if errorlevel 1 goto error
+  if %build_native_only% == 0 (
+    xmake f -a arm -m %build_config% %build_sdk_option%
+    if %build_rebuild% == 1 ( xmake clean )
+    xmake
+    if errorlevel 1 goto error
+  )
 )
 xmake f -a x64 -m %build_config% %build_sdk_option%
 if %build_rebuild% == 1 ( xmake clean )
 xmake
 if errorlevel 1 goto error
+if %build_native_only% == 0 (
+  xmake f -a x86 -m %build_config% %build_sdk_option%
+  if %build_rebuild% == 1 ( xmake clean )
+  xmake
+  if errorlevel 1 goto error
+)
+if %build_native_only% == 0 (
+  if %build_arm64% == 1 (
+    pushd arm64x_wrapper
+    call build.bat
+    if errorlevel 1 goto error
+    popd
+    copy arm64x_wrapper\weaselARM64X.dll output
+    if errorlevel 1 goto error
+  )
+)
 if %build_installer% == 1 (
   "%ProgramFiles(x86)%"\NSIS\Bin\makensis.exe ^
   /DWEASEL_VERSION=%WEASEL_VERSION% ^
