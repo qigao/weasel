@@ -7,7 +7,11 @@ set "boost_x_y_z=%boost_version:.=_%"
 
 if not defined BOOST_ROOT set "BOOST_ROOT=%RIME_ROOT%\deps\boost_%boost_x_y_z%"
 if exist "%BOOST_ROOT%\boost" goto boost_found
-for %%I in ("%BOOST_ROOT%\.") do set "src_dir=%%~dpI"
+rem The 7z archive contains a boost_x_y_z top-level directory.
+rem Extract into its parent, not into BOOST_ROOT itself.
+for %%I in ("%BOOST_ROOT%") do set "src_dir=%%~dpI"
+if not exist "%src_dir%" mkdir "%src_dir%"
+if errorlevel 1 exit /b 1
 
 rem Keep source acquisition separate from compilation in native CI.
 aria2c "https://archives.boost.io/release/%boost_version%/source/boost_%boost_x_y_z%.7z" -d "%src_dir%"
