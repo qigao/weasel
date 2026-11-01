@@ -1,16 +1,21 @@
-# Weasel TSF COM Server / OpenWTL v0.1.0 cutover (Draft #14)
+# Weasel TSF COM Server / OpenWTL post-v0.1.0 cutover (Issue #14)
 
 The only source of reusable COM server infrastructure is pinned
 [qigao/OpenWTL](https://github.com/qigao/OpenWTL) at
-`cf2b4443ef068c002fa781ab96aaafe22a5f96e7`, under
+`107147834e7c82ddf44016a56b4ed9d331e25e64` (merged [OpenWTL PR #108](https://github.com/qigao/OpenWTL/pull/108)), under
 `external/OpenWTL`. OpenWTL's **single public CMake target** is
 `OpenWTL::WTL`; the existing MSBuild product graph consumes its source headers directly;
 conversion to the single CMake target remains tracked in [Weasel #7](https://github.com/qigao/weasel/issues/7).
 
-The Git submodule is pinned to the immutable [OpenWTL v0.1.0](https://github.com/qigao/OpenWTL/releases/tag/v0.1.0) release commit
-`cf2b4443ef068c002fa781ab96aaafe22a5f96e7` (tree `09065079ddaeb098f29cd15791c961d7af6fe2be`).
-The release has exact-HEAD [master CI #41320380332](https://github.com/qigao/OpenWTL/actions/runs/41320380332): 6/6 successful jobs, including MSVC and llvm-mingw x64/ARM64 and real native Windows ARM64. It includes the upstream counted-Unicode CString resource fix formerly tracked in OpenWTL #75 / PR #76.
-**This verifies OpenWTL itself, not Weasel's Windows TSF DLL or its fork Actions.**
+The immutable [OpenWTL v0.1.0](https://github.com/qigao/OpenWTL/releases/tag/v0.1.0) release tag remains at
+`cf2b4443ef068c002fa781ab96aaafe22a5f96e7`. The Weasel gitlink now follows the **merged, post-release CSize API fix**
+`107147834e7c82ddf44016a56b4ed9d331e25e64` (Git tree `f7824e714fef82b634985d42c4b46f55aac1e751`),
+whose merged content contains `CSize::SetSize(int,int)`.
+Its [OpenWTL PR #108 CI #41332552933](https://github.com/qigao/OpenWTL/actions/runs/41332552933)
+passed 6/6 Windows source/native jobs on exact PR HEAD `b19159b684c322f2318aae76126ad271f1bf4a40`.
+The merged master exact-HEAD qualification is tracked separately at
+[CI #41333224581](https://github.com/qigao/OpenWTL/actions/runs/41333224581).
+**Neither upstream CI substitutes for Weasel's real Windows TSF DLL/COM tests.**
 
 Weasel's own TSF interfaces, CLSID, session, profile/category registration,
 candidate UI and Rime business belong to Weasel. OpenWTL's
