@@ -19,7 +19,7 @@ static void error_message(const WCHAR* msg) {
 }
 
 WeaselTSF::WeaselTSF(OpenATL::COM::Module& module)
-    : WeaselTsfComBase(module) {
+    : WeaselTsfComBase(module), _module(module) {
   _dwThreadMgrEventSinkCookie = TF_INVALID_COOKIE;
   _dwTextEditSinkCookie = TF_INVALID_COOKIE;
   _dwTextLayoutSinkCookie = TF_INVALID_COOKIE;

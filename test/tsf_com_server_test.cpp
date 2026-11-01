@@ -58,11 +58,13 @@ bool TestCycle(GetClassObject get, CanUnloadNow canUnload) {
     IUnknown* alias = nullptr;
     success &= Check(service->QueryInterface(IID_ITfTextInputProcessor,
                       reinterpret_cast<void**>(&legacy)) == S_OK &&
-                         legacy, "independent legacy TSF interface");
+                         legacy, "legacy TSF interface");
     success &= Check(service->QueryInterface(IID_IUnknown,
                       reinterpret_cast<void**>(&canonical)) == S_OK &&
                          canonical, "canonical IUnknown");
     if (legacy) {
+      success &= Check(legacy == static_cast<ITfTextInputProcessor*>(service),
+                       "SDK-inherited legacy interface alias");
       success &= Check(legacy->QueryInterface(IID_IUnknown,
                         reinterpret_cast<void**>(&alias)) == S_OK &&
                            alias, "legacy interface IUnknown");
@@ -108,6 +110,73 @@ bool TestCycle(GetClassObject get, CanUnloadNow canUnload) {
                    "all references retired and DLL unloadable");
   return success;
 }
+
+bool TestDisplayHelperLifetime(GetClassObject get, CanUnloadNow canUnload) {
+  IClassFactory* factory = nullptr;
+  HRESULT hr = get(kWeaselTsf, IID_IClassFactory,
+                   reinterpret_cast<void**>(&factory));
+  bool success = Check(hr == S_OK && factory, "helper test factory");
+  ITfDisplayAttributeProvider* provider = nullptr;
+  if (factory) {
+    hr = factory->CreateInstance(nullptr, IID_ITfDisplayAttributeProvider,
+                                 reinterpret_cast<void**>(&provider));
+    success &= Check(hr == S_OK && provider, "display attribute provider");
+    factory->Release();
+  }
+  IEnumTfDisplayAttributeInfo* enumerator = nullptr;
+  IEnumTfDisplayAttributeInfo* clone = nullptr;
+  ITfDisplayAttributeInfo* attribute = nullptr;
+  ITfDisplayAttributeInfo* fromClone = nullptr;
+  if (provider) {
+    hr = provider->EnumDisplayAttributeInfo(&enumerator);
+    success &= Check(hr == S_OK && enumerator, "display attribute enumerator");
+  }
+  if (enumerator) {
+    ULONG fetched = 0;
+    hr = enumerator->Next(1, &attribute, &fetched);
+    success &= Check(hr == S_OK && fetched == 1 && attribute,
+                     "display attribute element");
+    hr = enumerator->Clone(&clone);
+    success &= Check(hr == S_OK && clone, "clone enumerator state");
+  }
+  if (provider)
+    provider->Release();
+  if (enumerator)
+    enumerator->Release();
+  if (clone) {
+    success &= Check(canUnload() == S_FALSE,
+                     "retained helpers pin module after TSF release");
+    ITfDisplayAttributeInfo* exhausted = nullptr;
+    ULONG fetched = 99;
+    hr = clone->Next(1, &exhausted, &fetched);
+    success &= Check(hr == S_FALSE && fetched == 0 && exhausted == nullptr,
+                     "clone preserves exhausted position");
+    if (exhausted)
+      exhausted->Release();
+    success &= Check(clone->Reset() == S_OK, "reset retained clone");
+    fetched = 0;
+    hr = clone->Next(1, &fromClone, &fetched);
+    success &= Check(hr == S_OK && fetched == 1 && fromClone,
+                     "clone creates element after TSF destruction");
+    clone->Release();
+  }
+  GUID first{}, second{};
+  bool firstGuid = false;
+  if (attribute) {
+    firstGuid = attribute->GetGUID(&first) == S_OK;
+    success &= Check(firstGuid, "retained attribute remains callable");
+    attribute->Release();
+  }
+  if (fromClone) {
+    success &= Check(canUnload() == S_FALSE, "last attribute pins module");
+    success &= Check(fromClone->GetGUID(&second) == S_OK && firstGuid &&
+                         IsEqualGUID(first, second),
+                     "independent attributes share their native GUID");
+    fromClone->Release();
+  }
+  success &= Check(canUnload() == S_OK, "helper references retire before unload");
+  return success;
+}
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
@@ -141,6 +210,8 @@ int wmain(int argc, wchar_t** argv) {
   bool success = Check(get && canUnload, "required COM exports");
   for (int i = 0; success && i != 8; ++i)
     success = TestCycle(get, canUnload);
+  if (success)
+    success = TestDisplayHelperLifetime(get, canUnload);
   if (canUnload)
     success &= Check(canUnload() == S_OK, "safe final unload");
   success &= Check(FreeLibrary(dll) != 0, "FreeLibrary");

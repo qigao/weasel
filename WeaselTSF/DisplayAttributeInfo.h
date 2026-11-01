@@ -1,16 +1,17 @@
 #pragma once
 
 #include <msctf.h>
+#include <openatl/com_server.h>
 
-class CDisplayAttributeInfoInput : public ITfDisplayAttributeInfo {
+class CDisplayAttributeInfoInput;
+using DisplayAttributeInfoComBase = OpenATL::COM::Object<
+    CDisplayAttributeInfoInput,
+    OpenATL::COM::Interface<ITfDisplayAttributeInfo, &IID_ITfDisplayAttributeInfo>>;
+
+class CDisplayAttributeInfoInput final : public DisplayAttributeInfoComBase {
  public:
-  CDisplayAttributeInfoInput();
+  explicit CDisplayAttributeInfoInput(OpenATL::COM::Module& module);
   ~CDisplayAttributeInfoInput();
-
-  // IUnknown
-  STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void** ppvObj);
-  STDMETHODIMP_(ULONG) AddRef(void);
-  STDMETHODIMP_(ULONG) Release(void);
 
   // ITfDisplayAttributeInfo
   STDMETHODIMP GetGUID(_Out_ GUID* pguid);
@@ -24,5 +25,4 @@ class CDisplayAttributeInfoInput : public ITfDisplayAttributeInfo {
   const TF_DISPLAYATTRIBUTE* _pDisplayAttribute;
   const WCHAR* _pDescription;
   const WCHAR* _pValueName;
-  LONG _refCount;  // COM ref count
 };

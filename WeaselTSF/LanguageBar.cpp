@@ -49,15 +49,15 @@ static bool open(const std::wstring& path) {
                                   SW_SHOWNORMAL) > 32;
 }
 
-CLangBarItemButton::CLangBarItemButton(com_ptr<WeaselTSF> pTextService,
+CLangBarItemButton::CLangBarItemButton(OpenATL::COM::Module& module,
+                                       com_ptr<WeaselTSF> pTextService,
                                        REFGUID guid,
                                        weasel::UIStyle& style)
-    : _status(0),
+    : _moduleReference(module),
+      _status(0),
       _style(style),
       _current_schema_zhung_icon(),
       _current_schema_ascii_icon() {
-  DllAddRef();
-
   _pLangBarItemSink = NULL;
   _cRef = 1;
   _pTextService = pTextService;
@@ -65,9 +65,7 @@ CLangBarItemButton::CLangBarItemButton(com_ptr<WeaselTSF> pTextService,
   ascii_mode = false;
 }
 
-CLangBarItemButton::~CLangBarItemButton() {
-  DllRelease();
-}
+CLangBarItemButton::~CLangBarItemButton() = default;
 
 STDMETHODIMP CLangBarItemButton::QueryInterface(REFIID riid, void** ppvObject) {
   if (ppvObject == NULL)
@@ -88,15 +86,16 @@ STDMETHODIMP CLangBarItemButton::QueryInterface(REFIID riid, void** ppvObject) {
 }
 
 STDMETHODIMP_(ULONG) CLangBarItemButton::AddRef() {
-  return ++_cRef;
+  if (!OpenATL::COM::detail::retain(_cRef))
+    std::terminate();
+  return _cRef.load();
 }
 
 STDMETHODIMP_(ULONG) CLangBarItemButton::Release() {
-  LONG cr = --_cRef;
-  assert(_cRef >= 0);
-  if (_cRef == 0)
+  const ULONG remaining = OpenATL::COM::detail::release(_cRef);
+  if (remaining == 0)
     delete this;
-  return cr;
+  return remaining;
 }
 
 STDMETHODIMP CLangBarItemButton::GetInfo(TF_LANGBARITEMINFO* pInfo) {
@@ -152,7 +151,7 @@ STDMETHODIMP CLangBarItemButton::OnClick(TfLBIClick click,
                                          POINT pt,
                                          const RECT* prcArea) {
   if (click == TF_LBI_CLK_LEFT) {
-    _pTextService->_HandleLangBarMenuSelect(
+    _pTextService.p->_HandleLangBarMenuSelect(
         ascii_mode ? ID_WEASELTRAY_DISABLE_ASCII : ID_WEASELTRAY_ENABLE_ASCII);
     ascii_mode = !ascii_mode;
     if (_pLangBarItemSink) {
@@ -160,7 +159,7 @@ STDMETHODIMP CLangBarItemButton::OnClick(TfLBIClick click,
     }
   } else if (click == TF_LBI_CLK_RIGHT) {
     /* Open menu */
-    HWND hwnd = _pTextService->_GetFocusedContextWindow();
+    HWND hwnd = _pTextService.p->_GetFocusedContextWindow();
     if (hwnd != NULL) {
       LANGID langid = get_language_id();
       HMENU menu;
@@ -176,7 +175,7 @@ STDMETHODIMP CLangBarItemButton::OnClick(TfLBIClick click,
           popupMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_HORPOSANIMATION, pt.x,
           pt.y, hwnd, NULL);
       DestroyMenu(menu);
-      _pTextService->_HandleLangBarMenuSelect(wID);
+      _pTextService.p->_HandleLangBarMenuSelect(wID);
     }
   }
   return S_OK;
@@ -191,7 +190,7 @@ STDMETHODIMP CLangBarItemButton::InitMenu(ITfMenu* pMenu) {
 }
 
 STDMETHODIMP CLangBarItemButton::OnMenuSelect(UINT wID) {
-  _pTextService->_HandleLangBarMenuSelect(wID);
+  _pTextService.p->_HandleLangBarMenuSelect(wID);
   return S_OK;
 }
 
@@ -371,9 +370,14 @@ BOOL WeaselTSF::_InitLanguageBar() {
   if (_pThreadMgr->QueryInterface(&pLangBarItemMgr) != S_OK)
     return FALSE;
 
-  if ((_pLangBarButton = new CLangBarItemButton(this, GUID_LBI_INPUTMODE,
-                                                _cand->style())) == NULL)
+  _pLangBarButton.Attach(new (std::nothrow) CLangBarItemButton(
+      _module, this, GUID_LBI_INPUTMODE, _cand->style()));
+  if (!_pLangBarButton)
     return FALSE;
+  if (FAILED(_pLangBarButton->ModuleStatus())) {
+    _pLangBarButton.Release();
+    return FALSE;
+  }
 
   if (pLangBarItemMgr->AddItem(_pLangBarButton) != S_OK) {
     _pLangBarButton = NULL;

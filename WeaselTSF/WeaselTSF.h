@@ -13,16 +13,16 @@ class CCompartmentEventSink;
 class WeaselTSF;
 
 // OpenWTL owns canonical IUnknown identity, interface QI and reference counts.
-// ITfTextInputProcessorEx and ITfTextInputProcessor independently inherit
-// IUnknown. They are separate subobjects, not an InterfaceAlias pair.
-// OpenWTL supplies one canonical IUnknown for both, while Weasel implements
-// their TSF-specific methods.
+// Expose the SDK-inherited legacy processor through the extended interface.
+// InterfaceAlias checks the C++ inheritance and avoids a duplicate base.
+// OpenWTL supplies canonical IUnknown; Weasel supplies the TSF methods.
 using WeaselTsfComBase = OpenATL::COM::Object<
     WeaselTSF,
     OpenATL::COM::Interface<ITfTextInputProcessorEx,
                             &IID_ITfTextInputProcessorEx>,
-    OpenATL::COM::Interface<ITfTextInputProcessor,
-                            &IID_ITfTextInputProcessor>,
+    OpenATL::COM::InterfaceAlias<ITfTextInputProcessor,
+                                 &IID_ITfTextInputProcessor,
+                                 ITfTextInputProcessorEx>,
     OpenATL::COM::Interface<ITfThreadMgrEventSink,
                             &IID_ITfThreadMgrEventSink>,
     OpenATL::COM::Interface<ITfTextEditSink, &IID_ITfTextEditSink>,
@@ -214,6 +214,7 @@ class WeaselTSF final : public WeaselTsfComBase {
     return (_activateFlags & TF_TMF_IMMERSIVEMODE) != 0;
   }
 
+  OpenATL::COM::Module& _module;
   com_ptr<ITfThreadMgr> _pThreadMgr;
   TfClientId _tfClientId = TF_CLIENTID_NULL;
   DWORD _dwThreadMgrEventSinkCookie;
