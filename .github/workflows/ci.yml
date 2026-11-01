@@ -58,6 +58,12 @@ jobs:
           cp env.vs2022.bat env.bat
           echo git_ref_name="$(git describe --always)" >> $GITHUB_ENV
 
+      # Inherited MSVC build is transitional until Weasel #7 moves
+      # the real application to OpenWTL::WTL / llvm-mingw.
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          sdk: ${{ env.SDKVER }}
+
       - name: Cache Boost
         id: cache-boost
         uses: actions/cache@v4
@@ -68,14 +74,13 @@ jobs:
 
       - name: Install Boost
         if: steps.cache-boost.outputs.cache-hit != 'true'
-        shell: bash
+        shell: pwsh
         run: |
-          ./install_boost.bat
-          ./build.bat boost arm64 native
-
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          sdk: ${{ env.SDKVER }}
+          $ErrorActionPreference = 'Stop'
+          & .\install_boost.bat source-only
+          if ($LASTEXITCODE -ne 0) { throw "Boost source acquisition failed" }
+          & .\build.bat boost arm64 native
+          if ($LASTEXITCODE -ne 0) { throw "Boost native x64/ARM64 compilation failed" }
 
       # bundled winsparkle v0.9.2 to disable auto open ReleaseNoteUrl in default browser
       - name: cache bundled winsparkle
