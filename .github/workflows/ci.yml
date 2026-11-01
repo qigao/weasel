@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - '*'
+      - '**'
     tags:
       - '[0-9]+.*'
   pull_request:
@@ -20,7 +20,7 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
           wget https://apt.llvm.org/llvm-snapshot.gpg.key
-          sudo gpg --dearmor < llvm-snapshot.gpg.key > /usr/share/keyrings/llvm-archive-keyring.gpg
+          sudo gpg --dearmor --yes --output /usr/share/keyrings/llvm-archive-keyring.gpg llvm-snapshot.gpg.key
           echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-jammy-18.list
           sudo apt-get update
           sudo apt-get install -y clang-format-18
