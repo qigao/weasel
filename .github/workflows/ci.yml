@@ -145,6 +145,16 @@ jobs:
             .\xbuild.bat arm64 installer
           }
 
+      - name: Validate native TSF COM Server (Windows x64)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & cl.exe /nologo /std:c++17 /EHsc /W4 /WX test\tsf_com_server_test.cpp /Fe:tsf_com_server_test.exe
+          if ($LASTEXITCODE -ne 0) { throw "TSF COM Server test compilation failed" }
+          $dll = (Resolve-Path '.\output\weaselx64.dll').Path
+          & .\tsf_com_server_test.exe $dll
+          if ($LASTEXITCODE -ne 0) { throw "TSF COM Server native runtime failed" }
+
       - name: Compress Debug Symbols
         if: matrix.variant == 'msbuild'
         shell: pwsh

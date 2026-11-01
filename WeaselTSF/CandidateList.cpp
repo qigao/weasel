@@ -8,12 +8,24 @@
 using namespace std;
 using namespace weasel;
 
-CCandidateList::CCandidateList(com_ptr<WeaselTSF> pTextService)
-    : _ui(make_unique<UI>()), _tsf(pTextService), _pbShow(TRUE) {
-  _cRef = 1;
+CCandidateList::CCandidateList(WeaselTSF* owner, OpenATL::COM::Module& module)
+    : _ui(make_unique<UI>()),
+      _tsf(owner),
+      _moduleReference(module),
+      _pbShow(TRUE) {}
+
+CCandidateList::~CCandidateList() {
+  InvalidateOwner();
 }
 
-CCandidateList::~CCandidateList() {}
+void CCandidateList::InvalidateOwner() {
+  // A candidate UIElement may outlive the text service. In this apartment,
+  // invalidate its non-owning owner first, then retire any UI callbacks.
+  _tsf = nullptr;
+  if (_ui)
+    _ui->SetUICallBack({});
+  _pContextDocument = nullptr;
+}
 
 STDMETHODIMP CCandidateList::QueryInterface(REFIID riid, void** ppvObj) {
   if (ppvObj == nullptr) {
@@ -45,23 +57,17 @@ STDMETHODIMP_(ULONG) CCandidateList::AddRef(void) {
 }
 
 STDMETHODIMP_(ULONG) CCandidateList::Release(void) {
-  LONG cr = --_cRef;
-
-  assert(_cRef >= 0);
-
-  if (_cRef == 0) {
+  const ULONG remaining = --_cRef;
+  if (remaining == 0)
     delete this;
-  }
-
-  return cr;
+  return remaining;
 }
 
 STDMETHODIMP CCandidateList::GetDescription(BSTR* pbstr) {
-  static auto str = SysAllocString(L"Candidate List");
-  if (pbstr) {
-    *pbstr = str;
-  }
-  return S_OK;
+  if (!pbstr)
+    return E_POINTER;
+  *pbstr = SysAllocString(L"Candidate List");
+  return *pbstr ? S_OK : E_OUTOFMEMORY;
 }
 
 STDMETHODIMP CCandidateList::GetGUID(GUID* pguid) {
@@ -96,7 +102,11 @@ STDMETHODIMP CCandidateList::GetUpdatedFlags(DWORD* pdwFlags) {
 }
 
 STDMETHODIMP CCandidateList::GetDocumentMgr(ITfDocumentMgr** ppdim) {
+  if (!ppdim)
+    return E_POINTER;
   *ppdim = nullptr;
+  if (!_tsf)
+    return E_UNEXPECTED;
   auto pThreadMgr = _tsf->_GetThreadMgr();
   if (pThreadMgr == nullptr) {
     return E_FAIL;
@@ -166,6 +176,8 @@ STDMETHODIMP CCandidateList::Finalize(void) {
 }
 
 STDMETHODIMP CCandidateList::Abort(void) {
+  if (!_tsf)
+    return E_UNEXPECTED;
   _tsf->_AbortComposition(true);
   Destroy();
   return S_OK;
@@ -194,6 +206,8 @@ STDMETHODIMP CCandidateList::ShowCandidateNumbers(BOOL* pIsShow) {
 }
 
 STDMETHODIMP CCandidateList::FinalizeExactCompositionString() {
+  if (!_tsf)
+    return E_UNEXPECTED;
   _tsf->_AbortComposition(false);
   return E_NOTIMPL;
 }
@@ -243,6 +257,8 @@ UIStyle& CCandidateList::style() {
 }
 
 HWND CCandidateList::_GetActiveWnd() {
+  if (!_tsf)
+    return nullptr;
   com_ptr<ITfDocumentMgr> pDocumentMgr;
   com_ptr<ITfContext> pContext;
   com_ptr<ITfContextView> pContextView;
@@ -267,6 +283,8 @@ HWND CCandidateList::_GetActiveWnd() {
 }
 
 HRESULT CCandidateList::_UpdateUIElement() {
+  if (!_tsf)
+    return E_UNEXPECTED;
   HRESULT hr = S_OK;
 
   com_ptr<ITfUIElementMgr> pUIElementMgr;
@@ -284,6 +302,8 @@ HRESULT CCandidateList::_UpdateUIElement() {
 }
 
 void CCandidateList::StartUI() {
+  if (!_tsf)
+    return;
   if (_uiStarted)
     return;
 
@@ -304,7 +324,8 @@ void CCandidateList::StartUI() {
   if (!_ui->uiCallback())
     _ui->SetUICallBack([this](size_t* const sel, size_t* const hov,
                               bool* const next, bool* const scroll_next) {
-      _tsf->HandleUICallback(sel, hov, next, scroll_next);
+      if (_tsf)
+        _tsf->HandleUICallback(sel, hov, next, scroll_next);
     });
   if (FAILED(pUIElementMgr->BeginUIElement(this, &_pbShow, &uiid)))
     return;
@@ -325,6 +346,11 @@ void CCandidateList::StartUI() {
 void CCandidateList::EndUI() {
   if (!_uiStarted)
     return;
+  if (!_tsf) {
+    _uiStarted = false;
+    _DisposeUIWindow();
+    return;
+  }
 
   com_ptr<ITfThreadMgr> pThreadMgr = _tsf->_GetThreadMgr();
   if (pThreadMgr) {

@@ -19,14 +19,7 @@
 
 #define TEXTSERVICE_ICON_INDEX 0
 
-void DllAddRef();
-void DllRelease();
-
 extern HINSTANCE g_hInst;
-
-extern LONG g_cRefDll;
-
-extern CRITICAL_SECTION g_cs;
 
 extern const CLSID c_clsidTextService;
 

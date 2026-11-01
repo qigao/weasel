@@ -1,13 +1,15 @@
 #pragma once
 #include <WeaselUI.h>
 #include "ctffunc.h"
+#include <atomic>
+#include <openatl/com_server.h>
 
 class WeaselTSF;
 
 class CCandidateList : public ITfIntegratableCandidateListUIElement,
                        public ITfCandidateListUIElementBehavior {
  public:
-  CCandidateList(com_ptr<WeaselTSF> pTextService);
+  CCandidateList(WeaselTSF* pTextService, OpenATL::COM::Module& module);
   ~CCandidateList();
 
   // IUnknown
@@ -52,6 +54,9 @@ class CCandidateList : public ITfIntegratableCandidateListUIElement,
   void UpdateInputPosition(RECT const& rc);
   void Destroy();
   void DestroyAll();
+  // Revokes the borrowed TSF owner before its C++ destructor releases this
+  // UIElement. External UIElement references keep the module pinned.
+  void InvalidateOwner();
   void StartUI();
   void EndUI();
 
@@ -78,8 +83,9 @@ class CCandidateList : public ITfIntegratableCandidateListUIElement,
   void _MakeUIWindow();
 
   std::unique_ptr<weasel::UI> _ui;
-  DWORD _cRef;
-  com_ptr<WeaselTSF> _tsf;
+  std::atomic<ULONG> _cRef{1};
+  WeaselTSF* _tsf;  // borrowed on the owning TSF apartment, never AddRef'd
+  OpenATL::COM::ModuleReference _moduleReference;
   DWORD uiid;
   TfIntegratableCandidateListSelectionStyle _selectionStyle =
       STYLE_ACTIVE_SELECTION;

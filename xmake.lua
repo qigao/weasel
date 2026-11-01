@@ -15,6 +15,14 @@ add_defines(
   "PRODUCT_VERSION=" .. (os.getenv("PRODUCT_VERSION") or "0.0.0.0")
 )
 
+-- One pinned checkout supplies both WTL and clean-room ATL/COM Server.
+-- CMake consumers use OpenWTL::WTL; xmake consumes these same source headers.
+local openwtl_root = path.join(os.projectdir(), "external", "OpenWTL")
+assert(os.isdir(path.join(openwtl_root, "alt", "include")) and
+       os.isdir(path.join(openwtl_root, "wtl", "Include")),
+       "Missing pinned external/OpenWTL submodule")
+add_includedirs(path.join(openwtl_root, "alt", "include"))
+add_includedirs(path.join(openwtl_root, "wtl", "Include"))
 add_includedirs("$(projectdir)/include")
 -- 设置Boost库的全局路径
 boost_root = os.getenv("BOOST_ROOT")
@@ -25,32 +33,22 @@ add_linkdirs(boost_lib_path)
 add_cxflags("/utf-8 /MP /O2 /Oi /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /external:W3 /Gd /TP")
 add_ldflags("/TLBID:1 /DYNAMICBASE /NXCOMPAT")
 
--- 全局ATL lib路径
-local atl_lib_dir = ''
-dpi_manifest = ''
-for include in string.gmatch(os.getenv("include"), "([^;]+)") do
-  if atl_lib_dir=='' and include:match(".*ATLMFC\\include\\?$") then
-    atl_lib_dir = include:replace("include$", "lib")
-    dpi_manifest = include:replace("ATLMFC\\include$", "Include\\Manifest\\PerMonitorHighDPIAware.manifest")
+-- Do not import Microsoft's ATLMFC include/lib directories from VS. All
+-- ATL/WTL source is owned by the pinned OpenWTL checkout above.
+for include in string.gmatch(os.getenv("include") or "", "([^;]+)") do
+  if not include:lower():find("atlmfc", 1, true) then
+    add_includedirs(include)
   end
-  add_includedirs(include)
 end
-
-add_includedirs("$(projectdir)/include/wtl")
 
 if is_arch("x64") then
   add_linkdirs("$(projectdir)/lib64")
-  add_linkdirs(atl_lib_dir .. "/x64")
 elseif is_arch("x86") then
   add_linkdirs("$(projectdir)/lib")
-  add_linkdirs(atl_lib_dir .. "/x86")
-elseif is_arch("arm") then
-  add_linkdirs(atl_lib_dir .. "/arm")
-elseif is_arch("arm64") then
-  add_linkdirs(atl_lib_dir .. "/arm64")
 end
-
-add_links("atls", "shell32", "advapi32", "gdi32", "user32", "uuid", "ole32")
+add_links("shell32", "advapi32", "gdi32", "user32", "uuid", "ole32",
+          "oleaut32", "comctl32", "shlwapi", "comdlg32", "uxtheme",
+          "msimg32", "dwmapi")
 
 includes("WeaselIPC", "WeaselUI", "WeaselTSF")
 

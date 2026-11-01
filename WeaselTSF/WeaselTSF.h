@@ -3,29 +3,41 @@
 #include "Globals.h"
 #include <WeaselIPC.h>
 #include <WeaselIPCData.h>
+#include <openatl/com_server.h>
 
 class CCandidateList;
 class CLangBarItemButton;
 class CCompartmentEventSink;
 
-class WeaselTSF : public ITfTextInputProcessorEx,
-                  public ITfThreadMgrEventSink,
-                  public ITfTextEditSink,
-                  public ITfTextLayoutSink,
-                  public ITfKeyEventSink,
-                  public ITfCompositionSink,
-                  public ITfThreadFocusSink,
-                  public ITfActiveLanguageProfileNotifySink,
-                  public ITfEditSession,
-                  public ITfDisplayAttributeProvider {
- public:
-  WeaselTSF();
-  ~WeaselTSF();
+class WeaselTSF;
 
-  /* IUnknown */
-  STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject);
-  STDMETHODIMP_(ULONG) AddRef();
-  STDMETHODIMP_(ULONG) Release();
+// OpenWTL owns canonical IUnknown identity, interface QI and reference counts.
+// InterfaceAlias exposes the inherited ITfTextInputProcessor without a second
+// base subobject. Concrete TSF behavior remains implemented by WeaselTSF.
+using WeaselTsfComBase = OpenATL::COM::Object<
+    WeaselTSF,
+    OpenATL::COM::Interface<ITfTextInputProcessorEx,
+                            &IID_ITfTextInputProcessorEx>,
+    OpenATL::COM::InterfaceAlias<ITfTextInputProcessor,
+                                 &IID_ITfTextInputProcessor,
+                                 ITfTextInputProcessorEx>,
+    OpenATL::COM::Interface<ITfThreadMgrEventSink,
+                            &IID_ITfThreadMgrEventSink>,
+    OpenATL::COM::Interface<ITfTextEditSink, &IID_ITfTextEditSink>,
+    OpenATL::COM::Interface<ITfTextLayoutSink, &IID_ITfTextLayoutSink>,
+    OpenATL::COM::Interface<ITfKeyEventSink, &IID_ITfKeyEventSink>,
+    OpenATL::COM::Interface<ITfCompositionSink, &IID_ITfCompositionSink>,
+    OpenATL::COM::Interface<ITfThreadFocusSink, &IID_ITfThreadFocusSink>,
+    OpenATL::COM::Interface<ITfActiveLanguageProfileNotifySink,
+                            &IID_ITfActiveLanguageProfileNotifySink>,
+    OpenATL::COM::Interface<ITfEditSession, &IID_ITfEditSession>,
+    OpenATL::COM::Interface<ITfDisplayAttributeProvider,
+                            &IID_ITfDisplayAttributeProvider>>;
+
+class WeaselTSF final : public WeaselTsfComBase {
+ public:
+  explicit WeaselTSF(OpenATL::COM::Module& module);
+  ~WeaselTSF();
 
   /* ITfTextInputProcessor */
   STDMETHODIMP Activate(ITfThreadMgr* pThreadMgr, TfClientId tfClientId);
@@ -221,7 +233,6 @@ class WeaselTSF : public ITfTextInputProcessorEx,
 
   com_ptr<CCandidateList> _cand;
 
-  LONG _cRef;  // COM ref count
 
   /* CUAS Candidate Window Position Workaround */
   BOOL _fCUASWorkaroundTested, _fCUASWorkaroundEnabled;
