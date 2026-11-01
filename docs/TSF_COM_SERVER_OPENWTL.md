@@ -4,9 +4,8 @@ The only source of reusable COM server infrastructure is pinned
 [qigao/OpenWTL](https://github.com/qigao/OpenWTL) at
 `cf2b4443ef068c002fa781ab96aaafe22a5f96e7`, under
 `external/OpenWTL`. OpenWTL's **single public CMake target** is
-`OpenWTL::WTL`; the existing MSBuild/xmake graphs consume the exact same
-source include directories directly while their conversion to CMake is
-tracked in [Weasel #7](https://github.com/qigao/weasel/issues/7).
+`OpenWTL::WTL`; the existing MSBuild product graph consumes its source headers directly;
+conversion to the single CMake target remains tracked in [Weasel #7](https://github.com/qigao/weasel/issues/7).
 
 The Git submodule is pinned to the immutable [OpenWTL v0.1.0](https://github.com/qigao/OpenWTL/releases/tag/v0.1.0) release commit
 `cf2b4443ef068c002fa781ab96aaafe22a5f96e7` (tree `09065079ddaeb098f29cd15791c961d7af6fe2be`).

@@ -190,8 +190,6 @@ if ($?) { } else { faild_exit }
 # update bat files
 update_bat -filePath "build.bat" -tag "$tag";
 if ($?) { } else { faild_exit }
-update_bat -filePath "xbuild.bat" -tag "$tag";
-if ($?) { } else { faild_exit }
 #update CHANGELOG.md
 if ($updatelog) {
   update_changelog -new_tag $tag -old_tag $basetag;
@@ -202,6 +200,6 @@ if ($updatelog) {
 #commit changes and make a new tag
 $release_message = "chore(release): $tag :tada:"
 $release_tag = $tag
-& git add update/*.xml build.bat xbuild.bat
+& git add update/*.xml build.bat
 & git commit --message $release_message
 & git tag --annotate $release_tag --message $release_message

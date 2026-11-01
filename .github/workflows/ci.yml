@@ -21,10 +21,6 @@ jobs:
       boost_version: 1.84.0
       BOOST_ROOT: ${{ github.workspace }}\deps\boost_1_84_0
       SDKVER: 10.0.19041.0
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [msbuild, xmake]
     steps:
       - name: Checkout last commit
         uses: actions/checkout@v4
@@ -111,10 +107,6 @@ jobs:
           $ErrorActionPreference = 'Stop'
           .\build.bat data
 
-      - name: Setup xmake
-        if: matrix.variant == 'xmake'
-        uses: xmake-io/github-action-setup-xmake@v1
-
       - name: Build Weasel
         shell: pwsh
         id: build_weasel
@@ -122,17 +114,13 @@ jobs:
           RELEASE_BUILD: ${{ (github.repository == 'rime/weasel' && startsWith(github.ref, 'refs/tags/')) && '1' || '' }}
         run: |
           $ErrorActionPreference = 'Stop'
-          if ('${{ matrix.variant }}' -eq 'msbuild') {
-            & .\build.bat arm64 native weasel
-          } else {
-            & .\xbuild.bat arm64 native weasel
-          }
+          & .\build.bat arm64 native weasel
           if ($LASTEXITCODE -ne 0) {
-            throw "Weasel ${{ matrix.variant }} native build failed with exit $LASTEXITCODE"
+            throw "Weasel native MSBuild failed with exit $LASTEXITCODE"
           }
           $product = '.\output\weaselx64.dll'
           if (-not (Test-Path -LiteralPath $product -PathType Leaf)) {
-            throw "Weasel ${{ matrix.variant }} native build returned success but did not produce $product"
+            throw "Weasel native MSBuild returned success but did not produce $product"
           }
 
       - name: Validate native TSF COM Server (Windows x64)
@@ -156,7 +144,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "TSF host-filter runtime acceptance failed" }
 
       - name: Upload native binaries and debug symbols
-        if: matrix.variant == 'msbuild'
         uses: actions/upload-artifact@v4
         with:
           name: weasel-artifact-${{ env.git_ref_name }}
