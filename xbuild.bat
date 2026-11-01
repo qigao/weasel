@@ -1,13 +1,21 @@
 @echo off
 setlocal enabledelayedexpansion
 if not defined include (
-  echo You should run this inside Developer Command Promt!
-  exit /b
+  echo Error: native Windows compiler environment is not initialized.
+  exit /b 1
 )
 rem The native DPI manifest is a version-controlled Weasel product resource.
 rem Never copy a replacement from Visual Studio's private ATLMFC tree.
 if not exist "%~dp0PerMonitorHighDPIAware.manifest" (
   echo Error: missing repository-owned PerMonitorHighDPIAware.manifest
+  exit /b 1
+)
+if not exist "%~dp0external\OpenWTL\alt\include\atlbase.h" (
+  echo Error: missing pinned OpenWTL ATL source checkout
+  exit /b 1
+)
+if not exist "%~dp0external\OpenWTL\wtl\Include\atlapp.h" (
+  echo Error: missing pinned OpenWTL WTL source checkout
   exit /b 1
 )
 rem ---------------------------------------------------------------------------
@@ -174,23 +182,39 @@ rem "native" mode qualifies only x64/ARM64. Other build invocations
 rem still retain the former x86/ARM32/ARM64X release outputs.
 if %build_arm64% == 1 (
   xmake f -a arm64 -m %build_config% %build_sdk_option%
-  if %build_rebuild% == 1 ( xmake clean )
+  if errorlevel 1 goto error
+  if %build_rebuild% == 1 (
+    xmake clean
+    if errorlevel 1 goto error
+  )
   xmake
   if errorlevel 1 goto error
   if %build_native_only% == 0 (
     xmake f -a arm -m %build_config% %build_sdk_option%
-    if %build_rebuild% == 1 ( xmake clean )
+    if errorlevel 1 goto error
+    if %build_rebuild% == 1 (
+      xmake clean
+      if errorlevel 1 goto error
+    )
     xmake
     if errorlevel 1 goto error
   )
 )
 xmake f -a x64 -m %build_config% %build_sdk_option%
-if %build_rebuild% == 1 ( xmake clean )
+if errorlevel 1 goto error
+if %build_rebuild% == 1 (
+  xmake clean
+  if errorlevel 1 goto error
+)
 xmake
 if errorlevel 1 goto error
 if %build_native_only% == 0 (
   xmake f -a x86 -m %build_config% %build_sdk_option%
-  if %build_rebuild% == 1 ( xmake clean )
+  if errorlevel 1 goto error
+  if %build_rebuild% == 1 (
+    xmake clean
+    if errorlevel 1 goto error
+  )
   xmake
   if errorlevel 1 goto error
 )
@@ -229,5 +253,6 @@ goto end
   exit /b 1
   
 :end
-  cd %WEASEL_ROOT%
+  cd /d "%WEASEL_ROOT%"
+  exit /b 0
 

@@ -18,9 +18,8 @@ add_defines(
 -- One pinned checkout supplies both WTL and clean-room ATL/COM Server.
 -- CMake consumers use OpenWTL::WTL; xmake consumes these same source headers.
 local openwtl_root = path.join(os.projectdir(), "external", "OpenWTL")
-assert(os.isdir(path.join(openwtl_root, "alt", "include")) and
-       os.isdir(path.join(openwtl_root, "wtl", "Include")),
-       "Missing pinned external/OpenWTL submodule")
+-- Xmake's project-description scope does not expose the standard Lua assertion builtin.
+-- Check required product source directories in xbuild.bat before invoking xmake.
 add_includedirs(path.join(openwtl_root, "alt", "include"))
 add_includedirs(path.join(openwtl_root, "wtl", "Include"))
 add_includedirs("$(projectdir)/include")

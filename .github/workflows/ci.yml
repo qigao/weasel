@@ -22,6 +22,7 @@ jobs:
       BOOST_ROOT: ${{ github.workspace }}\deps\boost_1_84_0
       SDKVER: 10.0.19041.0
     strategy:
+      fail-fast: false
       matrix:
         variant: [msbuild, xmake]
     steps:
@@ -122,9 +123,16 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ('${{ matrix.variant }}' -eq 'msbuild') {
-            .\build.bat arm64 native weasel
+            & .\build.bat arm64 native weasel
           } else {
-            .\xbuild.bat arm64 native weasel
+            & .\xbuild.bat arm64 native weasel
+          }
+          if ($LASTEXITCODE -ne 0) {
+            throw "Weasel ${{ matrix.variant }} native build failed with exit $LASTEXITCODE"
+          }
+          $product = '.\output\weaselx64.dll'
+          if (-not (Test-Path -LiteralPath $product -PathType Leaf)) {
+            throw "Weasel ${{ matrix.variant }} native build returned success but did not produce $product"
           }
 
       - name: Validate native TSF COM Server (Windows x64)
