@@ -165,12 +165,10 @@ rem if to clean
 if %build_clean% == 1 ( goto clean )
 if %build_weasel% == 0 ( goto end )
 
+rem Native product CI: only ARM64 and x64; do not build ARM32, x86
+rem or optional ARM64X packaging as side effects of the TSF gate.
 if %build_arm64% == 1 (
   xmake f -a arm64 -m %build_config% %build_sdk_option%
-  if %build_rebuild% == 1 ( xmake clean )
-  xmake
-  if errorlevel 1 goto error
-  xmake f -a arm  -m %build_config% %build_sdk_option%
   if %build_rebuild% == 1 ( xmake clean )
   xmake
   if errorlevel 1 goto error
@@ -179,20 +177,6 @@ xmake f -a x64 -m %build_config% %build_sdk_option%
 if %build_rebuild% == 1 ( xmake clean )
 xmake
 if errorlevel 1 goto error
-xmake f -a x86 -m %build_config% %build_sdk_option%
-if %build_rebuild% == 1 ( xmake clean )
-xmake
-if errorlevel 1 goto error
-
-if %build_arm64% == 1 (
-  pushd arm64x_wrapper
-  call build.bat
-  if errorlevel 1 goto error
-  popd
-
-  copy arm64x_wrapper\weaselARM64X.dll output
-  if errorlevel 1 goto error
-)
 if %build_installer% == 1 (
   "%ProgramFiles(x86)%"\NSIS\Bin\makensis.exe ^
   /DWEASEL_VERSION=%WEASEL_VERSION% ^
