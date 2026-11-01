@@ -4,6 +4,8 @@
 #include "CandidateList.h"
 #include <KeyEvent.h>
 #include <math.h>
+#include <limits>
+#include <new>
 
 using namespace std;
 using namespace weasel;
@@ -12,7 +14,12 @@ CCandidateList::CCandidateList(WeaselTSF* owner, OpenATL::COM::Module& module)
     : _ui(make_unique<UI>()),
       _tsf(owner),
       _moduleReference(module),
-      _pbShow(TRUE) {}
+      _pbShow(TRUE) {
+  // ModuleRef exhaustion must abort COM object creation; an unpinned
+  // UIElement would otherwise allow an unsafe DllCanUnloadNow(S_OK).
+  if (FAILED(_moduleReference.Status()))
+    throw std::bad_alloc();
+}
 
 CCandidateList::~CCandidateList() {
   InvalidateOwner();
@@ -53,11 +60,15 @@ STDMETHODIMP CCandidateList::QueryInterface(REFIID riid, void** ppvObj) {
 }
 
 STDMETHODIMP_(ULONG) CCandidateList::AddRef(void) {
-  return ++_cRef;
+  // Use the exact same checked atomic reference arithmetic as OpenWTL's
+  // COM::Object; never wrap an active COM reference count.
+  if (!OpenATL::COM::detail::retain(_cRef))
+    std::terminate();
+  return _cRef.load();
 }
 
 STDMETHODIMP_(ULONG) CCandidateList::Release(void) {
-  const ULONG remaining = --_cRef;
+  const ULONG remaining = OpenATL::COM::detail::release(_cRef);
   if (remaining == 0)
     delete this;
   return remaining;
@@ -71,6 +82,8 @@ STDMETHODIMP CCandidateList::GetDescription(BSTR* pbstr) {
 }
 
 STDMETHODIMP CCandidateList::GetGUID(GUID* pguid) {
+  if (!pguid)
+    return E_POINTER;
   /// 36c3c795-7159-45aa-ab12-30229a51dbd3
   *pguid = {0x36c3c795,
             0x7159,
@@ -88,6 +101,8 @@ STDMETHODIMP CCandidateList::Show(BOOL showCandidateWindow) {
 }
 
 STDMETHODIMP CCandidateList::IsShown(BOOL* pIsShow) {
+  if (!pIsShow)
+    return E_POINTER;
   *pIsShow = _ui->IsShown();
   return S_OK;
 }
@@ -118,25 +133,37 @@ STDMETHODIMP CCandidateList::GetDocumentMgr(ITfDocumentMgr** ppdim) {
 }
 
 STDMETHODIMP CCandidateList::GetCount(UINT* pCandidateCount) {
-  *pCandidateCount = static_cast<UINT>(_ui->ctx().cinfo.candies.size());
+  if (!pCandidateCount)
+    return E_POINTER;
+  const size_t size = _ui->ctx().cinfo.candies.size();
+  if (size > (std::numeric_limits<UINT>::max)())
+    return HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW);
+  *pCandidateCount = static_cast<UINT>(size);
   return S_OK;
 }
 
 STDMETHODIMP CCandidateList::GetSelection(UINT* pSelectedCandidateIndex) {
+  if (!pSelectedCandidateIndex)
+    return E_POINTER;
   *pSelectedCandidateIndex = _ui->ctx().cinfo.highlighted;
   return S_OK;
 }
 
 STDMETHODIMP CCandidateList::GetString(UINT uIndex, BSTR* pbstr) {
+  if (!pbstr)
+    return E_POINTER;
   *pbstr = nullptr;
   auto& cinfo = _ui->ctx().cinfo;
   if (uIndex >= cinfo.candies.size())
     return E_INVALIDARG;
 
-  auto& str = cinfo.candies[uIndex].str;
-  *pbstr = SysAllocStringLen(str.c_str(), static_cast<UINT>(str.size()) + 1);
-
-  return S_OK;
+  const auto& str = cinfo.candies[uIndex].str;
+  if (str.size() > (std::numeric_limits<UINT>::max)())
+    return HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW);
+  // SysAllocStringLen's length excludes the trailing NUL. The original
+  // +1 inserted an unintended extra NUL in every candidate BSTR.
+  *pbstr = SysAllocStringLen(str.data(), static_cast<UINT>(str.size()));
+  return *pbstr ? S_OK : E_OUTOFMEMORY;
 }
 
 STDMETHODIMP CCandidateList::GetPageIndex(UINT* pIndex,
@@ -161,6 +188,8 @@ STDMETHODIMP CCandidateList::SetPageIndex(UINT* pIndex, UINT uPageCnt) {
 }
 
 STDMETHODIMP CCandidateList::GetCurrentPage(UINT* puPage) {
+  if (!puPage)
+    return E_POINTER;
   *puPage = 0;
   return S_OK;
 }
@@ -189,6 +218,8 @@ STDMETHODIMP CCandidateList::SetIntegrationStyle(GUID guidIntegrationStyle) {
 
 STDMETHODIMP CCandidateList::GetSelectionStyle(
     TfIntegratableCandidateListSelectionStyle* ptfSelectionStyle) {
+  if (!ptfSelectionStyle)
+    return E_POINTER;
   *ptfSelectionStyle = _selectionStyle;
   return S_OK;
 }
@@ -196,11 +227,15 @@ STDMETHODIMP CCandidateList::GetSelectionStyle(
 STDMETHODIMP CCandidateList::OnKeyDown(WPARAM wParam,
                                        LPARAM lParam,
                                        BOOL* pIsEaten) {
+  if (!pIsEaten)
+    return E_POINTER;
   *pIsEaten = TRUE;
   return S_OK;
 }
 
 STDMETHODIMP CCandidateList::ShowCandidateNumbers(BOOL* pIsShow) {
+  if (!pIsShow)
+    return E_POINTER;
   *pIsShow = TRUE;
   return S_OK;
 }
