@@ -32,8 +32,9 @@ jobs:
         shell: bash
         run: python3 test/tsf_lifetime_source_contract_test.py
 
+  # Native product build runs independently so legacy style debt cannot
+  # hide actual Windows compiler / TSF runtime failures. Lint remains required.
   build:
-    needs: lint
     runs-on: windows-2022
     env:
       boost_version: 1.84.0
