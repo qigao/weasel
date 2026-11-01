@@ -14,7 +14,7 @@
 #include <atlbase.h>
 #include <atlwin.h>
 
-#include <wtl/atlapp.h>
-#include <wtl/atlframe.h>
+#include <atlapp.h>
+#include <atlframe.h>
 
 #include <boost/thread.hpp>

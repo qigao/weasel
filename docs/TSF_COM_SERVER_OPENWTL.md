@@ -2,24 +2,33 @@
 
 The only source of reusable COM server infrastructure is pinned
 [qigao/OpenWTL](https://github.com/qigao/OpenWTL) at
-`c0b077e37e5ca23dbcf316d7a2f94d30c90734ed` ([OpenWTL PR #110](https://github.com/qigao/OpenWTL/pull/110) standalone-header namespace candidate), under
-`external/OpenWTL`. OpenWTL's **single public CMake target** is
-`OpenWTL::WTL`; the existing MSBuild product graph consumes its source headers directly;
-conversion to the single CMake target remains tracked in [Weasel #7](https://github.com/qigao/weasel/issues/7).
+`83b46a99343555873bce62f952ae1c2b411b251d` (Git tree
+`d56968b834af5a997116577326e6d33c71864887`), under `external/OpenWTL`.
+[OpenWTL PR #111](https://github.com/qigao/OpenWTL/pull/111) adds the standard
+`CWindow::GetWindowText(CString&)` overload required by Weasel Deployer.
+It is stacked on [OpenWTL PR #110](https://github.com/qigao/OpenWTL/pull/110),
+parent `c0b077e37e5ca23dbcf316d7a2f94d30c90734ed`, which fixes standalone
+`atlcomcli.h` namespace and SDK/runtime dependency order. The parent passed
+[all six upstream jobs](https://github.com/qigao/OpenWTL/actions/runs/41335463962).
+The new window-text candidate and actual Weasel product require independent
+exact-HEAD CI qualification. Both upstream PRs are unmerged/unreleased.
 
-The immutable [OpenWTL v0.1.0](https://github.com/qigao/OpenWTL/releases/tag/v0.1.0) release tag remains at
-`cf2b4443ef068c002fa781ab96aaafe22a5f96e7`. The Weasel gitlink now tests the proposed standalone `atlcomcli.h` namespace fix
-`c0b077e37e5ca23dbcf316d7a2f94d30c90734ed` (Git tree `27233e1c63c62a5475d7c9d2027cb59d482ecdd9`).
-It is based on merged `107147834e7c82ddf44016a56b4ed9d331e25e64` and retains
-`CSize::SetSize(int,int)` from PR #108. PR #110 is Ready, unmerged/unreleased.
-[Its exact-HEAD CI #41335463962](https://github.com/qigao/OpenWTL/actions/runs/41335463962) passed all six jobs, including
-MSVC/llvm-mingw x64 and real ARM64 normal/full-original source subsets x5.
-This downstream product build and its real TSF tests remain a separate gate.
-Its [OpenWTL PR #108 CI #41332552933](https://github.com/qigao/OpenWTL/actions/runs/41332552933)
-passed 6/6 Windows source/native jobs on exact PR HEAD `b19159b684c322f2318aae76126ad271f1bf4a40`.
-The merged master exact-HEAD qualification is tracked separately at
-[CI #41333224581](https://github.com/qigao/OpenWTL/actions/runs/41333224581).
-**Neither upstream CI substitutes for Weasel's real Windows TSF DLL/COM tests.**
+The immutable [OpenWTL v0.1.0](https://github.com/qigao/OpenWTL/releases/tag/v0.1.0)
+release remains at `cf2b4443ef068c002fa781ab96aaafe22a5f96e7`.
+The candidate retains merged master `107147834e7c82ddf44016a56b4ed9d331e25e64`
+and its `CSize::SetSize(int,int)` fix from PR #108.
+OpenWTL's single public CMake target is `OpenWTL::WTL`; the existing MSBuild
+product consumes its source headers directly. Product CMake conversion remains
+[Weasel #7](https://github.com/qigao/weasel/issues/7).
+
+[Weasel CI 41339194723](https://github.com/qigao/weasel/actions/runs/41339194723)
+on `88a5b4f2deede82fec3ec9eafcd7da30dfc09f9a` compiled the TSF migration;
+the full product then exposed the missing window-text overload and residual
+`wtl/atlapp.h` / `wtl/atlframe.h` includes in IPC Server.
+The inherited test/TestWeaselIPC include is corrected to the same canonical
+source path. A scan of all 162 tracked native source/build files found no other
+old WTL include paths. No project, workflow or test target is added.
+Upstream results never substitute for actual Weasel Windows DLL tests.
 
 Weasel's own TSF interfaces, CLSID, session, profile/category registration,
 candidate UI and Rime business belong to Weasel. OpenWTL's
@@ -62,9 +71,9 @@ verification of the Rime/TSF Windows registry installation.
 - `test/tsf_com_server_test.cpp` is built and executed against the real
   Weasel DLL in the existing Windows x64 build job, **not** via an extra
   installer or consumer project.
-- Validate unknown CLSID, incorrect IID and null outputs, the separately
-  implemented `ITfTextInputProcessorEx` / `ITfTextInputProcessor` QI
-  identities (the legacy interface aliases the SDK extended interface), nonaggregation, LockServer and
+- Validate unknown CLSID, incorrect IID and null outputs, the inherited
+  `ITfTextInputProcessorEx` / `ITfTextInputProcessor` QI identities
+  (the legacy interface aliases the SDK extended interface), nonaggregation, LockServer and
   actual `DllCanUnloadNow == S_OK` after releasing the final object/factory.
 - Existing [Draft #12](https://github.com/qigao/weasel/pull/12)
   independently handles ThreadMgr/ThreadFocus/KeyEvent sink cleanup and
@@ -75,4 +84,4 @@ verification of the Rime/TSF Windows registry installation.
   callback teardown, concurrent release, scoped registry operations,
   MSVC/LLVM-MinGW x64/ARM64 and exact-head CI evidence.
 
-**No claims of passing Windows CI are made by this source-only commit.**
+The current exact-HEAD build/runtime results are recorded in [PR #15](https://github.com/qigao/weasel/pull/15).
