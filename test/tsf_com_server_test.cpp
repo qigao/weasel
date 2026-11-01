@@ -53,19 +53,19 @@ bool TestCycle(GetClassObject get, CanUnloadNow canUnload) {
           service, "create TSF processor");
 
   if (service) {
-    ITfTextInputProcessor* inherited = nullptr;
+    ITfTextInputProcessor* legacy = nullptr;
     IUnknown* canonical = nullptr;
     IUnknown* alias = nullptr;
     success &= Check(service->QueryInterface(IID_ITfTextInputProcessor,
-                      reinterpret_cast<void**>(&inherited)) == S_OK &&
-                         inherited, "inherited TSF interface");
+                      reinterpret_cast<void**>(&legacy)) == S_OK &&
+                         legacy, "independent legacy TSF interface");
     success &= Check(service->QueryInterface(IID_IUnknown,
                       reinterpret_cast<void**>(&canonical)) == S_OK &&
                          canonical, "canonical IUnknown");
-    if (inherited) {
-      success &= Check(inherited->QueryInterface(IID_IUnknown,
+    if (legacy) {
+      success &= Check(legacy->QueryInterface(IID_IUnknown,
                         reinterpret_cast<void**>(&alias)) == S_OK &&
-                           alias, "inherited interface IUnknown");
+                           alias, "legacy interface IUnknown");
       success &= Check(canonical && alias && canonical == alias,
                        "single canonical IUnknown identity");
     }
@@ -73,8 +73,8 @@ bool TestCycle(GetClassObject get, CanUnloadNow canUnload) {
       alias->Release();
     if (canonical)
       canonical->Release();
-    if (inherited)
-      inherited->Release();
+    if (legacy)
+      legacy->Release();
     success &= Check(canUnload() == S_FALSE, "TSF object pins module");
   }
 

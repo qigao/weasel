@@ -34,8 +34,9 @@ verification of the Rime/TSF Windows registry installation.
 - `test/tsf_com_server_test.cpp` is built and executed against the real
   Weasel DLL in the existing Windows x64 build job, **not** via an extra
   installer or consumer project.
-- Validate unknown CLSID, incorrect IID and null outputs, inherited
-  `ITfTextInputProcessor` QI identity, nonaggregation, LockServer and
+- Validate unknown CLSID, incorrect IID and null outputs, the separately
+  implemented `ITfTextInputProcessorEx` / `ITfTextInputProcessor` QI
+  identities (both independently inherit IUnknown), nonaggregation, LockServer and
   actual `DllCanUnloadNow == S_OK` after releasing the final object/factory.
 - Existing [Draft #12](https://github.com/qigao/weasel/pull/12)
   independently handles ThreadMgr/ThreadFocus/KeyEvent sink cleanup and

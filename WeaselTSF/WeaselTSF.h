@@ -13,15 +13,16 @@ class CCompartmentEventSink;
 class WeaselTSF;
 
 // OpenWTL owns canonical IUnknown identity, interface QI and reference counts.
-// InterfaceAlias exposes the inherited ITfTextInputProcessor without a second
-// base subobject. Concrete TSF behavior remains implemented by WeaselTSF.
+// ITfTextInputProcessorEx and ITfTextInputProcessor independently inherit
+// IUnknown. They are separate subobjects, not an InterfaceAlias pair.
+// OpenWTL supplies one canonical IUnknown for both, while Weasel implements
+// their TSF-specific methods.
 using WeaselTsfComBase = OpenATL::COM::Object<
     WeaselTSF,
     OpenATL::COM::Interface<ITfTextInputProcessorEx,
                             &IID_ITfTextInputProcessorEx>,
-    OpenATL::COM::InterfaceAlias<ITfTextInputProcessor,
-                                 &IID_ITfTextInputProcessor,
-                                 ITfTextInputProcessorEx>,
+    OpenATL::COM::Interface<ITfTextInputProcessor,
+                            &IID_ITfTextInputProcessor>,
     OpenATL::COM::Interface<ITfThreadMgrEventSink,
                             &IID_ITfThreadMgrEventSink>,
     OpenATL::COM::Interface<ITfTextEditSink, &IID_ITfTextEditSink>,
