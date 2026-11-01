@@ -36,7 +36,10 @@ STDMETHODIMP WeaselTSF::OnPopContext(ITfContext* pContext) {
 }
 
 BOOL WeaselTSF::_InitThreadMgrEventSink() {
-  ITfSource* pSource;
+  if (_pThreadMgr == nullptr ||
+      _dwThreadMgrEventSinkCookie != TF_INVALID_COOKIE)
+    return FALSE;
+  ITfSource* pSource = nullptr;
   if (_pThreadMgr->QueryInterface(IID_ITfSource, (void**)&pSource) != S_OK)
     return FALSE;
   if (pSource->AdviseSink(IID_ITfThreadMgrEventSink,
@@ -51,12 +54,14 @@ BOOL WeaselTSF::_InitThreadMgrEventSink() {
 }
 
 void WeaselTSF::_UninitThreadMgrEventSink() {
-  ITfSource* pSource;
-  if (_dwThreadMgrEventSinkCookie == TF_INVALID_COOKIE)
+  if (_pThreadMgr == nullptr ||
+      _dwThreadMgrEventSinkCookie == TF_INVALID_COOKIE)
     return;
+  ITfSource* pSource = nullptr;
   if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSource, (void**)&pSource))) {
-    pSource->UnadviseSink(_dwThreadMgrEventSinkCookie);
+    const HRESULT hr = pSource->UnadviseSink(_dwThreadMgrEventSinkCookie);
+    if (SUCCEEDED(hr) || hr == CONNECT_E_NOCONNECTION)
+      _dwThreadMgrEventSinkCookie = TF_INVALID_COOKIE;
     pSource->Release();
   }
-  _dwThreadMgrEventSinkCookie = TF_INVALID_COOKIE;
 }

@@ -32,6 +32,21 @@ jobs:
         shell: bash
         run: ./clang-format.sh -i
 
+      - name: TSF host-lifecycle source regression
+        shell: bash
+        run: python3 test/tsf_lifetime_source_contract_test.py
+
+  build:
+    needs: lint
+    runs-on: windows-2022
+    env:
+      boost_version: 1.84.0
+      BOOST_ROOT: ${{ github.workspace }}\deps\boost_1_84_0
+      SDKVER: 10.0.19041.0
+    strategy:
+      matrix:
+        variant: [msbuild, xmake]
+    steps:
   build:
     needs: lint
     runs-on: windows-2022
@@ -154,6 +169,16 @@ jobs:
           $dll = (Resolve-Path '.\output\weaselx64.dll').Path
           & .\tsf_com_server_test.exe $dll
           if ($LASTEXITCODE -ne 0) { throw "TSF COM Server native runtime failed" }
+
+      - name: Validate TSF host exception filter (Windows x64 runtime)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & cl.exe /nologo /std:c++17 /EHsc /W4 /WX test\tsf_host_filter_test.cpp /Fe:tsf_host_filter_test.exe
+          if ($LASTEXITCODE -ne 0) { throw "TSF host-filter test compilation failed" }
+          $dll = (Resolve-Path '.\output\weaselx64.dll').Path
+          & .\tsf_host_filter_test.exe $dll
+          if ($LASTEXITCODE -ne 0) { throw "TSF host-filter runtime acceptance failed" }
 
       - name: Compress Debug Symbols
         if: matrix.variant == 'msbuild'
