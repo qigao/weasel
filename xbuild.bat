@@ -4,15 +4,11 @@ if not defined include (
   echo You should run this inside Developer Command Promt!
   exit /b
 )
-for %%a in ("%include:;=" "%") do (
-  echo %%a| findstr /r "ATLMFC\\include" > nul
-  if not errorlevel 1 (
-    set "atl_lib_dir=%%a"
-    set dpi_manifest=!atl_lib_dir:ATLMFC\include=Include\Manifest\PerMonitorHighDPIAware.manifest!
-    if not exist ".\PerMonitorHighDPIAware.manifest" (
-      copy ""!dpi_manifest!"" .\
-    )
-  )
+rem The native DPI manifest is a version-controlled Weasel product resource.
+rem Never copy a replacement from Visual Studio's private ATLMFC tree.
+if not exist "%~dp0PerMonitorHighDPIAware.manifest" (
+  echo Error: missing repository-owned PerMonitorHighDPIAware.manifest
+  exit /b 1
 )
 rem ---------------------------------------------------------------------------
 if not exist env.bat copy env.bat.template env.bat
