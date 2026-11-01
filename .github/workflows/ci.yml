@@ -155,9 +155,9 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ('${{ matrix.variant }}' -eq 'msbuild') {
-            .\build.bat arm64 installer
+            .\build.bat arm64 weasel
           } else {
-            .\xbuild.bat arm64 installer
+            .\xbuild.bat arm64 weasel
           }
 
       - name: Validate native TSF COM Server (Windows x64)
@@ -194,33 +194,6 @@ jobs:
           name: weasel-artifact-${{ env.git_ref_name }}
           if-no-files-found: error
           path: |
-            .\output\archives\weasel*.exe
+            .\output\weasel*.dll
+            .\output\weaselserver.exe
             .\output\archives\debug_symbols.7z
-
-      # Release-only steps (run on tags or master)
-      - name: Extract changelog
-        if: ${{ github.repository == 'rime/weasel' && startsWith(github.ref, 'refs/tags/') && matrix.variant == 'msbuild' }}
-        shell: pwsh
-        run: .\extract_changelog.ps1
-
-      - name: Create Nightly release
-        if: ${{ github.repository == 'rime/weasel' && github.ref == 'refs/heads/master' && matrix.variant == 'msbuild' }}
-        uses: 'marvinpinto/action-automatic-releases@latest'
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: latest
-          prerelease: true
-          title: "Nightly Build"
-          files: |
-            ./output/archives/weasel*.exe
-            ./output/archives/debug_symbols.7z
-
-      - name: Release (stable)
-        if: ${{ github.repository == 'rime/weasel' && startsWith(github.ref, 'refs/tags/') && matrix.variant == 'msbuild' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: |
-            ./output/archives/weasel*.exe
-            ./output/archives/debug_symbols.7z
-          body_path: ${{ github.workspace }}/RELEASE_CHANGELOG.md
