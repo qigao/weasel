@@ -171,14 +171,7 @@ jobs:
           & .\tsf_host_filter_test.exe $dll
           if ($LASTEXITCODE -ne 0) { throw "TSF host-filter runtime acceptance failed" }
 
-      - name: Compress Debug Symbols
-        if: matrix.variant == 'msbuild'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          output\7z.exe a -t7z "./output/archives/debug_symbols.7z" "output/*.pdb" -r
-
-      - name: Upload artifacts
+      - name: Upload native binaries and debug symbols
         if: matrix.variant == 'msbuild'
         uses: actions/upload-artifact@v4
         with:
@@ -187,4 +180,4 @@ jobs:
           path: |
             .\output\weasel*.dll
             .\output\weaselserver.exe
-            .\output\archives\debug_symbols.7z
+            .\output\*.pdb
