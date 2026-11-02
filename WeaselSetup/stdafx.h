@@ -6,8 +6,7 @@
 #pragma once
 
 // Change these values to use different versions
-#define WINVER		0x0603
-#define _WIN32_WINNT	0x0603
+#include <WeaselTargetVersion.h>
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 
 #include <atlbase.h>
