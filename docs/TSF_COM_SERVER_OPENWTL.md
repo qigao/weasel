@@ -1,22 +1,22 @@
-# Weasel TSF COM Server / OpenWTL post-v0.1.0 cutover (Issue #14)
+# Weasel TSF COM Server / OpenWTL 0.1.2 cutover (Issue #14)
 
 The only source of reusable COM server infrastructure is pinned
 [qigao/OpenWTL](https://github.com/qigao/OpenWTL) at
-`83b46a99343555873bce62f952ae1c2b411b251d` (Git tree
-`d56968b834af5a997116577326e6d33c71864887`), under `external/OpenWTL`.
+`311b2dc361eea42cf6c821289133a99713298a74` (Git tree
+`2e5a3f4b49dd27b18d4c89470aad5df7e258dfe6`), under `external/OpenWTL`,
+the OpenWTL 0.1.2 release candidate in
+[PR #134](https://github.com/qigao/OpenWTL/pull/134).
 [OpenWTL PR #111](https://github.com/qigao/OpenWTL/pull/111) adds the standard
 `CWindow::GetWindowText(CString&)` overload required by Weasel Deployer.
-It is stacked on [OpenWTL PR #110](https://github.com/qigao/OpenWTL/pull/110),
-parent `c0b077e37e5ca23dbcf316d7a2f94d30c90734ed`, which fixes standalone
-`atlcomcli.h` namespace and SDK/runtime dependency order. The parent passed
-[all six upstream jobs](https://github.com/qigao/OpenWTL/actions/runs/41335463962).
-The new window-text candidate and actual Weasel product require independent
-exact-HEAD CI qualification. Both upstream PRs are unmerged/unreleased.
+Together with [OpenWTL PR #110](https://github.com/qigao/OpenWTL/pull/110),
+it fixes standalone `atlcomcli.h` namespace and SDK/runtime dependency order.
+Both compatibility fixes are merged and included in 0.1.2. The existing
+Windows workflow checks out the actual Weasel commit, verifies this dependency
+pin and builds the ARM64/x64 product before running the x64 DLL tests.
 
 The immutable [OpenWTL v0.1.0](https://github.com/qigao/OpenWTL/releases/tag/v0.1.0)
 release remains at `cf2b4443ef068c002fa781ab96aaafe22a5f96e7`.
-The candidate retains merged master `107147834e7c82ddf44016a56b4ed9d331e25e64`
-and its `CSize::SetSize(int,int)` fix from PR #108.
+The new pin also includes the `CSize::SetSize(int,int)` fix from PR #108.
 OpenWTL's single public CMake target is `OpenWTL::WTL`; the existing MSBuild
 product consumes its source headers directly. Product CMake conversion remains
 [Weasel #7](https://github.com/qigao/weasel/issues/7).
