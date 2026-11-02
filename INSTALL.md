@@ -45,13 +45,14 @@ variables directly in the console, before invocation of `build.bat`:
 set BOOST_ROOT=X:\path\to\boost_N_NN_N
 ```
 
-### CMake TSF and Setup build
+### CMake native product build
 
-The x64/ARM64 MSVC CMake presets build the TSF DLL, candidate UI, IPC client
-and Setup executable, and register the existing DLL tests with CTest.
+The x64 MSVC CMake preset builds Server, Deployer, the TSF DLL, candidate UI,
+IPC libraries and Setup. The ARM64 preset builds TSF, UI, IPC client and Setup.
+Both presets register the existing DLL tests with CTest.
 See [the CMake build instructions](docs/CMAKE_BUILD.md) for the current scope,
-prerequisites and commands. The complete product and installer still use the
-build below.
+prerequisites and commands. Installer and legacy architecture release builds
+still use the build below.
 
 ### Build
 

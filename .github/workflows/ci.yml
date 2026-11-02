@@ -171,9 +171,9 @@ jobs:
             .\output\weaselserver.exe
             .\output\*.pdb
 
-      # Issue #7: qualify the first real CMake product slice independently of
-      # the complete MSBuild graph above. CTest loads this graph's own DLL.
-      - name: Build CMake TSF and Setup (Windows x64)
+      # The x64 graph uses the same acquired Rime/patched WinSparkle bundle as
+      # MSBuild above. CTest loads the CMake graph's own TSF DLL.
+      - name: Build CMake applications, TSF and Setup (Windows x64)
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -200,7 +200,7 @@ jobs:
           cmake --build --preset install-msvc-arm64
           if errorlevel 1 exit /b 1
 
-      - name: Upload CMake TSF and Setup products
+      - name: Upload CMake products
         uses: actions/upload-artifact@v4
         with:
           name: weasel-cmake-${{ env.git_ref_name }}

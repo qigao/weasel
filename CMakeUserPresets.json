@@ -11,7 +11,12 @@
       "name": "msvc-x64",
       "inherits": ["msvc-base", "vcpkg"],
       "binaryDir": "${sourceDir}/build/msvc-x64",
+      "environment": {
+        "WEASEL_DEPENDENCY_ROOT": "${sourceDir}",
+        "PATH": "${sourceDir}/build/msvc-x64/bin;$env{WEASEL_DEPENDENCY_ROOT}/output;$penv{PATH}"
+      },
       "cacheVariables": {
+        "WEASEL_BUILD_APPLICATIONS": "ON",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/msvc-x64"
       }
@@ -22,6 +27,7 @@
       "binaryDir": "${sourceDir}/build/msvc-arm64",
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "arm64-windows-static",
+        "WEASEL_BUILD_APPLICATIONS": "OFF",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/msvc-arm64"
       }
     }
