@@ -6,22 +6,14 @@
 
 STDMETHODIMP WeaselTSF::EnumDisplayAttributeInfo(
     __RPC__deref_out_opt IEnumTfDisplayAttributeInfo** ppEnum) {
-  CEnumDisplayAttributeInfo* pAttributeEnum = nullptr;
-
   if (ppEnum == nullptr) {
     return E_INVALIDARG;
   }
 
   *ppEnum = nullptr;
 
-  pAttributeEnum = new (std::nothrow) CEnumDisplayAttributeInfo();
-  if (pAttributeEnum == nullptr) {
-    return E_OUTOFMEMORY;
-  }
-
-  *ppEnum = pAttributeEnum;
-
-  return S_OK;
+  return CEnumDisplayAttributeInfo::CreateInstance(
+      _module, IID_IEnumTfDisplayAttributeInfo, reinterpret_cast<void**>(ppEnum));
 }
 
 STDMETHODIMP WeaselTSF::GetDisplayAttributeInfo(
@@ -33,14 +25,8 @@ STDMETHODIMP WeaselTSF::GetDisplayAttributeInfo(
 
   *ppInfo = nullptr;
 
-  if (IsEqualGUID(guidInfo, c_guidDisplayAttributeInput)) {
-    *ppInfo = new (std::nothrow) CDisplayAttributeInfoInput();
-    if ((*ppInfo) == nullptr) {
-      return E_OUTOFMEMORY;
-    }
-  } else {
+  if (!IsEqualGUID(guidInfo, c_guidDisplayAttributeInput))
     return E_INVALIDARG;
-  }
-
-  return S_OK;
+  return CDisplayAttributeInfoInput::CreateInstance(
+      _module, IID_ITfDisplayAttributeInfo, reinterpret_cast<void**>(ppInfo));
 }

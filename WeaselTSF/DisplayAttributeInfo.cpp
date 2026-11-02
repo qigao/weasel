@@ -16,9 +16,8 @@ const TF_DISPLAYATTRIBUTE _daiDisplayAttribute = {
     TF_ATTR_INPUT     // attribute info
 };
 
-CDisplayAttributeInfoInput::CDisplayAttributeInfoInput() {
-  DllAddRef();
-  _refCount = 1;
+CDisplayAttributeInfoInput::CDisplayAttributeInfoInput(OpenATL::COM::Module& module)
+    : DisplayAttributeInfoComBase(module) {
 
   _pguid = &c_guidDisplayAttributeInput;
   _pDisplayAttribute = &_daiDisplayAttribute;
@@ -26,46 +25,7 @@ CDisplayAttributeInfoInput::CDisplayAttributeInfoInput() {
   _pValueName = _daiInputName;
 }
 
-CDisplayAttributeInfoInput::~CDisplayAttributeInfoInput() {
-  DllRelease();
-}
-
-STDMETHODIMP CDisplayAttributeInfoInput::QueryInterface(
-    REFIID riid,
-    _Outptr_ void** ppvObj) {
-  if (ppvObj == nullptr)
-    return E_INVALIDARG;
-
-  *ppvObj = nullptr;
-
-  if (IsEqualIID(riid, IID_IUnknown) ||
-      IsEqualIID(riid, IID_ITfDisplayAttributeInfo)) {
-    *ppvObj = (ITfDisplayAttributeInfo*)this;
-  }
-
-  if (*ppvObj) {
-    AddRef();
-    return S_OK;
-  }
-
-  return E_NOINTERFACE;
-}
-
-ULONG CDisplayAttributeInfoInput::AddRef(void) {
-  return ++_refCount;
-}
-
-ULONG CDisplayAttributeInfoInput::Release(void) {
-  LONG cr = --_refCount;
-
-  assert(_refCount >= 0);
-
-  if (_refCount == 0) {
-    delete this;
-  }
-
-  return cr;
-}
+CDisplayAttributeInfoInput::~CDisplayAttributeInfoInput() = default;
 
 STDMETHODIMP CDisplayAttributeInfoInput::GetGUID(_Out_ GUID* pguid) {
   if (pguid == nullptr)

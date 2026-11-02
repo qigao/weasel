@@ -40,7 +40,7 @@ STDMETHODIMP CStartCompositionEditSession::DoEditSession(TfEditCookie ec) {
   if ((pContextComposition->StartComposition(
            ec, pRangeComposition, _pTextService, &pComposition) == S_OK) &&
       (pComposition != NULL)) {
-    _pTextService->_SetComposition(pComposition);
+    _pTextService.p->_SetComposition(pComposition);
 
     /* set selection */
     TF_SELECTION tfSelection;
@@ -53,7 +53,7 @@ STDMETHODIMP CStartCompositionEditSession::DoEditSession(TfEditCookie ec) {
     // The old composition's range is still visible while its asynchronous
     // end session is pending. Position only after the new composition has
     // actually been created, not from the response handler's stale range.
-    _pTextService->_UpdateCompositionWindow(_pContext);
+    _pTextService.p->_UpdateCompositionWindow(_pContext);
   }
 
   return hr;
@@ -99,7 +99,7 @@ STDMETHODIMP CEndCompositionEditSession::DoEditSession(TfEditCookie ec) {
   if (!_pTextService || !_pContext)
     return S_OK;
 
-  _pTextService->_ClearCompositionDisplayAttributes(ec, _pContext);
+  _pTextService.p->_ClearCompositionDisplayAttributes(ec, _pContext);
 
   com_ptr<ITfRange> pCompositionRange;
   if (_clear && _pComposition->GetRange(&pCompositionRange) == S_OK)
@@ -110,8 +110,8 @@ STDMETHODIMP CEndCompositionEditSession::DoEditSession(TfEditCookie ec) {
   // Keeping it as the current composition makes that normal notification
   // look like an external abort and can clear a new Rime composition during
   // auto-commit.
-  if (_pTextService && _pTextService->_IsCurrentComposition(_pComposition))
-    _pTextService->_FinalizeComposition();
+  if (_pTextService && _pTextService.p->_IsCurrentComposition(_pComposition))
+    _pTextService.p->_FinalizeComposition();
   _pComposition->EndComposition(ec);
   return S_OK;
 }
@@ -204,7 +204,7 @@ STDMETHODIMP CGetTextExtentEditSession::DoEditSession(TfEditCookie ec) {
         rc.bottom += offsety;
       }
     }
-    _pTextService->_SetCompositionPosition(rc);
+    _pTextService.p->_SetCompositionPosition(rc);
   }
   return S_OK;
 }
@@ -295,7 +295,7 @@ STDMETHODIMP CInlinePreeditEditSession::DoEditSession(TfEditCookie ec) {
     }
   }
 
-  _pTextService->_SetCompositionDisplayAttributes(ec, _pContext,
+  _pTextService.p->_SetCompositionDisplayAttributes(ec, _pContext,
                                                   pRangeComposition);
 
   /* Set caret */

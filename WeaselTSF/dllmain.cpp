@@ -1,18 +1,11 @@
 #include "stdafx.h"
 #include "Globals.h"
 
-// A TSF DLL is loaded into third-party host processes. It must never replace
-// the process-wide unhandled-exception filter or write host crash dumps.
-BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved) {
-  switch (dwReason) {
-    case DLL_PROCESS_ATTACH:
-      g_hInst = hInstance;
-      if (!InitializeCriticalSectionAndSpinCount(&g_cs, 0))
-        return FALSE;
-      break;
-    case DLL_PROCESS_DETACH:
-      DeleteCriticalSection(&g_cs);
-      break;
-  }
+// Weasel TSF is an in-process server hosted by third-party applications.
+// The loader entry must not install a host-wide crash handler, register COM,
+// initialize an apartment, or build a second module-level COM runtime.
+BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
+  if (reason == DLL_PROCESS_ATTACH)
+    g_hInst = module;
   return TRUE;
 }

@@ -42,10 +42,10 @@
   };
 #endif // _WTL_SUPPORT_SDK_ATL3
 
-#include <wtl/atlapp.h>
-#include <wtl/atlframe.h>
-#include <wtl/atlctrls.h>
-#include <wtl/atldlgs.h>
+#include <atlapp.h>
+#include <atlframe.h>
+#include <atlctrls.h>
+#include <atldlgs.h>
 
 #include <VersionHelpers.hpp>
 

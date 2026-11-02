@@ -1,14 +1,17 @@
 #pragma once
+#include <msctf.h>
+#include <openatl/com_server.h>
 
-class CEnumDisplayAttributeInfo : public IEnumTfDisplayAttributeInfo {
+class CEnumDisplayAttributeInfo;
+using EnumDisplayAttributeInfoComBase = OpenATL::COM::Object<
+    CEnumDisplayAttributeInfo,
+    OpenATL::COM::Interface<IEnumTfDisplayAttributeInfo,
+                            &IID_IEnumTfDisplayAttributeInfo>>;
+
+class CEnumDisplayAttributeInfo final : public EnumDisplayAttributeInfoComBase {
  public:
-  CEnumDisplayAttributeInfo();
+  explicit CEnumDisplayAttributeInfo(OpenATL::COM::Module& module);
   ~CEnumDisplayAttributeInfo();
-
-  // IUnknown
-  STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void** ppvObj);
-  STDMETHODIMP_(ULONG) AddRef(void);
-  STDMETHODIMP_(ULONG) Release(void);
 
   // IEnumTfDisplayAttributeInfo
   STDMETHODIMP Clone(_Out_ IEnumTfDisplayAttributeInfo** ppEnum);
@@ -20,6 +23,6 @@ class CEnumDisplayAttributeInfo : public IEnumTfDisplayAttributeInfo {
   STDMETHODIMP Skip(ULONG ulCount);
 
  private:
-  LONG _index;     // next display attribute to enum
-  LONG _refCount;  // COM ref count
+  OpenATL::COM::Module& _module;
+  LONG _index;  // next display attribute to enum
 };

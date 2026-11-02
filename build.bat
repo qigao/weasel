@@ -81,6 +81,7 @@ set build_rime=0
 set rime_build_variant=release
 set build_weasel=0
 set build_installer=0
+set build_native_only=0
 set build_arm64=0
 
 rem parse the command line options
@@ -104,6 +105,7 @@ rem parse the command line options
   if "%1" == "librime" set build_rime=1
   if "%1" == "weasel" set build_weasel=1
   if "%1" == "installer" set build_installer=1
+  if "%1" == "native" set build_native_only=1
   if "%1" == "arm64" set build_arm64=1
   if "%1" == "all" (
     set build_boost=1
@@ -117,6 +119,11 @@ rem parse the command line options
   shift
   goto parse_cmdline_options
 :end_parsing_cmdline_options
+
+if %build_native_only% == 1 if %build_installer% == 1 (
+  echo Error: native qualification cannot build an installer.
+  goto error
+)
 
 if %build_weasel% == 0 (
 if %build_boost% == 0 (
@@ -199,27 +206,31 @@ del msbuild*.log
 if defined SDKVER set build_sdk_option=/p:WindowsTargetPlatformVersion=%SDKVER%
 if not defined SDKVER set build_sdk_option=
 
+rem The "native" mode qualifies only x64/ARM64. Ordinary release builds
+rem retain the legacy Win32, ARM32 and ARM64X variants until product migration.
 if %build_arm64% == 1 (
-
-  msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="ARM" /fl6 %build_sdk_option%
-  if errorlevel 1 goto error
+  if %build_native_only% == 0 (
+    msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="ARM" /fl6 %build_sdk_option%
+    if errorlevel 1 goto error
+  )
   msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="ARM64" /fl5 %build_sdk_option%
   if errorlevel 1 goto error
 )
-
 msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="x64" /fl2 %build_sdk_option%
 if errorlevel 1 goto error
-msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="Win32" /fl1 %build_sdk_option%
-if errorlevel 1 goto error
-
-if %build_arm64% == 1 (
-  pushd arm64x_wrapper
-  call build.bat
+if %build_native_only% == 0 (
+  msbuild.exe weasel.sln %build_option% /p:Configuration=%build_config% /p:Platform="Win32" /fl1 %build_sdk_option%
   if errorlevel 1 goto error
-  popd
-
-  copy arm64x_wrapper\weaselARM64X.dll output
-  if errorlevel 1 goto error
+)
+if %build_native_only% == 0 (
+  if %build_arm64% == 1 (
+    pushd arm64x_wrapper
+    call build.bat
+    if errorlevel 1 goto error
+    popd
+    copy arm64x_wrapper\weaselARM64X.dll output
+    if errorlevel 1 goto error
+  )
 )
 
 if %build_installer% == 1 (
@@ -271,14 +282,18 @@ rem build boost
   cd /d %BOOST_ROOT%
   if not exist b2.exe call bootstrap.bat
   if errorlevel 1 goto error
-  b2 %BJAM_OPTIONS_X86% stage %BOOST_COMPILED_LIBS%
-  if errorlevel 1 goto error
+  if %build_native_only% == 0 (
+    b2 %BJAM_OPTIONS_X86% stage %BOOST_COMPILED_LIBS%
+    if errorlevel 1 goto error
+  )
   b2 %BJAM_OPTIONS_X64% stage %BOOST_COMPILED_LIBS%
   if errorlevel 1 goto error
   
   if %build_arm64% == 1 (
-    b2 %BJAM_OPTIONS_ARM32% stage %BOOST_COMPILED_LIBS%
-    if errorlevel 1 goto error
+    if %build_native_only% == 0 (
+      b2 %BJAM_OPTIONS_ARM32% stage %BOOST_COMPILED_LIBS%
+      if errorlevel 1 goto error
+    )
     b2 %BJAM_OPTIONS_ARM64% stage %BOOST_COMPILED_LIBS%
     if errorlevel 1 goto error
   )

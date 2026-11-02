@@ -4,56 +4,14 @@
 #include "Globals.h"
 #include "DisplayAttributeInfo.h"
 
-CEnumDisplayAttributeInfo::CEnumDisplayAttributeInfo() {
-  DllAddRef();
+CEnumDisplayAttributeInfo::CEnumDisplayAttributeInfo(OpenATL::COM::Module& module)
+    : EnumDisplayAttributeInfoComBase(module), _module(module), _index(0) {}
 
-  _index = 0;
-  _refCount = 1;
-}
-
-CEnumDisplayAttributeInfo::~CEnumDisplayAttributeInfo() {
-  DllRelease();
-}
-
-STDMETHODIMP CEnumDisplayAttributeInfo::QueryInterface(REFIID riid,
-                                                       _Outptr_ void** ppvObj) {
-  if (ppvObj == nullptr)
-    return E_INVALIDARG;
-
-  *ppvObj = nullptr;
-
-  if (IsEqualIID(riid, IID_IUnknown) ||
-      IsEqualIID(riid, IID_IEnumTfDisplayAttributeInfo)) {
-    *ppvObj = (IEnumTfDisplayAttributeInfo*)this;
-  }
-
-  if (*ppvObj) {
-    AddRef();
-    return S_OK;
-  }
-
-  return E_NOINTERFACE;
-}
-
-STDMETHODIMP_(ULONG) CEnumDisplayAttributeInfo::AddRef() {
-  return ++_refCount;
-}
-
-STDMETHODIMP_(ULONG) CEnumDisplayAttributeInfo::Release() {
-  LONG cr = --_refCount;
-
-  assert(_refCount >= 0);
-
-  if (_refCount == 0) {
-    delete this;
-  }
-
-  return cr;
-}
+CEnumDisplayAttributeInfo::~CEnumDisplayAttributeInfo() = default;
 
 STDMETHODIMP CEnumDisplayAttributeInfo::Clone(
     _Out_ IEnumTfDisplayAttributeInfo** ppEnum) {
-  CEnumDisplayAttributeInfo* pClone = nullptr;
+  com_ptr<IEnumTfDisplayAttributeInfo> clone;
 
   if (ppEnum == nullptr) {
     return E_INVALIDARG;
@@ -61,15 +19,14 @@ STDMETHODIMP CEnumDisplayAttributeInfo::Clone(
 
   *ppEnum = nullptr;
 
-  pClone = new (std::nothrow) CEnumDisplayAttributeInfo();
-  if ((pClone) == nullptr) {
-    return E_OUTOFMEMORY;
-  }
+  const HRESULT hr = CreateInstance(_module, IID_IEnumTfDisplayAttributeInfo,
+                                    reinterpret_cast<void**>(&clone.p));
+  if (FAILED(hr))
+    return hr;
 
-  // the clone should match this object's state
-  pClone->_index = _index;
-
-  *ppEnum = pClone;
+  // This is the concrete instance just created by our own checked factory.
+  static_cast<CEnumDisplayAttributeInfo*>(clone.p)->_index = _index;
+  *ppEnum = clone.Detach();
 
   return S_OK;
 }
@@ -82,6 +39,8 @@ STDMETHODIMP CEnumDisplayAttributeInfo::Next(
   ULONG fetched;
 
   fetched = 0;
+  if (pcFetched)
+    *pcFetched = 0;
 
   if (ulCount == 0) {
     return S_OK;
@@ -95,10 +54,11 @@ STDMETHODIMP CEnumDisplayAttributeInfo::Next(
     ITfDisplayAttributeInfo* pDisplayAttributeInfo = nullptr;
 
     if (_index == 0) {
-      pDisplayAttributeInfo = new (std::nothrow) CDisplayAttributeInfoInput();
-      if ((pDisplayAttributeInfo) == nullptr) {
-        return E_OUTOFMEMORY;
-      }
+      const HRESULT hr = CDisplayAttributeInfoInput::CreateInstance(
+          _module, IID_ITfDisplayAttributeInfo,
+          reinterpret_cast<void**>(&pDisplayAttributeInfo));
+      if (FAILED(hr))
+        return hr;
     } else {
       break;
     }

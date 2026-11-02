@@ -18,76 +18,24 @@ static void error_message(const WCHAR* msg) {
   }
 }
 
-WeaselTSF::WeaselTSF() {
-  _cRef = 1;
-
+WeaselTSF::WeaselTSF(OpenATL::COM::Module& module)
+    : WeaselTsfComBase(module), _module(module) {
   _dwThreadMgrEventSinkCookie = TF_INVALID_COOKIE;
-
   _dwTextEditSinkCookie = TF_INVALID_COOKIE;
   _dwTextLayoutSinkCookie = TF_INVALID_COOKIE;
   _dwThreadFocusSinkCookie = TF_INVALID_COOKIE;
   _fTestKeyDownPending = FALSE;
   _fTestKeyUpPending = FALSE;
-
   _fCUASWorkaroundTested = _fCUASWorkaroundEnabled = FALSE;
 
-  _cand = new CCandidateList(this);
-
-  DllAddRef();
+  // Attach adopts the candidate's initial COM reference. It independently
+  // pins the OpenWTL module but borrows the TSF pointer, breaking the cycle.
+  _cand.Attach(new CCandidateList(this, module));
 }
 
 WeaselTSF::~WeaselTSF() {
-  DllRelease();
-}
-
-STDMETHODIMP WeaselTSF::QueryInterface(REFIID riid, void** ppvObject) {
-  if (ppvObject == NULL)
-    return E_INVALIDARG;
-
-  *ppvObject = NULL;
-
-  if (IsEqualIID(riid, IID_IUnknown) ||
-      IsEqualIID(riid, IID_ITfTextInputProcessor))
-    *ppvObject = (ITfTextInputProcessor*)this;
-  else if (IsEqualIID(riid, IID_ITfTextInputProcessorEx))
-    *ppvObject = (ITfTextInputProcessorEx*)this;
-  else if (IsEqualIID(riid, IID_ITfThreadMgrEventSink))
-    *ppvObject = (ITfThreadMgrEventSink*)this;
-  else if (IsEqualIID(riid, IID_ITfTextEditSink))
-    *ppvObject = (ITfTextEditSink*)this;
-  else if (IsEqualIID(riid, IID_ITfTextLayoutSink))
-    *ppvObject = (ITfTextLayoutSink*)this;
-  else if (IsEqualIID(riid, IID_ITfKeyEventSink))
-    *ppvObject = (ITfKeyEventSink*)this;
-  else if (IsEqualIID(riid, IID_ITfCompositionSink))
-    *ppvObject = (ITfCompositionSink*)this;
-  else if (IsEqualIID(riid, IID_ITfEditSession))
-    *ppvObject = (ITfEditSession*)this;
-  else if (IsEqualIID(riid, IID_ITfThreadFocusSink))
-    *ppvObject = (ITfThreadFocusSink*)this;
-  else if (IsEqualIID(riid, IID_ITfDisplayAttributeProvider))
-    *ppvObject = (ITfDisplayAttributeProvider*)this;
-
-  if (*ppvObject) {
-    AddRef();
-    return S_OK;
-  }
-  return E_NOINTERFACE;
-}
-
-STDMETHODIMP_(ULONG) WeaselTSF::AddRef() {
-  return ++_cRef;
-}
-
-STDMETHODIMP_(ULONG) WeaselTSF::Release() {
-  LONG cr = --_cRef;
-
-  assert(_cRef >= 0);
-
-  if (_cRef == 0)
-    delete this;
-
-  return cr;
+  if (_cand)
+    _cand->InvalidateOwner();
 }
 
 STDMETHODIMP WeaselTSF::Activate(ITfThreadMgr* pThreadMgr,
@@ -226,7 +174,6 @@ BOOL WeaselTSF::_InitThreadFocusSink() {
   }
   return TRUE;
 }
-
 void WeaselTSF::_UninitThreadFocusSink() {
   if (_pThreadMgr == nullptr ||
       _dwThreadFocusSinkCookie == TF_INVALID_COOKIE)
@@ -267,6 +214,8 @@ void WeaselTSF::_Reconnect() {
     _UpdateLanguageBar(_status);
   }
 }
+
+static unsigned int retry = 0;
 
 bool WeaselTSF::_EnsureServerConnected() {
   if (m_client.Echo())

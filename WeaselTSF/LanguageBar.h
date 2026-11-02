@@ -1,13 +1,16 @@
 #pragma once
 #include <msctf.h>
+#include <openatl/com_server.h>
 #include <WeaselUI.h>
 
 class CLangBarItemButton : public ITfLangBarItemButton, public ITfSource {
  public:
-  CLangBarItemButton(com_ptr<WeaselTSF> pTextService,
+  CLangBarItemButton(OpenATL::COM::Module& module,
+                     com_ptr<WeaselTSF> pTextService,
                      REFGUID guid,
                      weasel::UIStyle& style);
   ~CLangBarItemButton();
+  HRESULT ModuleStatus() const noexcept { return _moduleReference.Status(); }
 
   /* IUnknown */
   STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject);
@@ -36,10 +39,11 @@ class CLangBarItemButton : public ITfLangBarItemButton, public ITfSource {
   void SetLangbarStatus(DWORD dwStatus, BOOL fSet);
 
  private:
+  OpenATL::COM::ModuleReference _moduleReference;
   GUID _guid;
   com_ptr<WeaselTSF> _pTextService;
   com_ptr<ITfLangBarItemSink> _pLangBarItemSink;
-  LONG _cRef; /* COM Reference count */
+  std::atomic<ULONG> _cRef{1};
   DWORD _status;
   bool ascii_mode;
   weasel::UIStyle& _style;

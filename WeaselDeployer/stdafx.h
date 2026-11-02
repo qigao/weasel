@@ -16,11 +16,11 @@
 #include <atlwin.h>
 #include <atlimage.h>
 
-#include <wtl/atlapp.h>
-#include <wtl/atlctrls.h>
-#include <wtl/atlctrlx.h>
-#include <wtl/atlmisc.h>
-#include <wtl/atldlgs.h>
+#include <atlapp.h>
+#include <atlctrls.h>
+#include <atlctrlx.h>
+#include <atlmisc.h>
+#include <atldlgs.h>
 
 #ifdef _UNICODE
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")

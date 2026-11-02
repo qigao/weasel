@@ -213,7 +213,6 @@ update_xml "./update/testing-appcast.xml"
 
 # update bat files
 update_bat "./build.bat"
-update_bat "./xbuild.bat"
 # update CHANGELOG.md if needed
 if [[ $updatelog ]]; then
   update_changelog "$tag" "$basetag" || faild_exit
@@ -222,6 +221,6 @@ fi
 # commit and tag
 release_message="chore(release): $tag :tada:"
 release_tag="$tag"
-git add update/*.xml build.bat xbuild.bat
+git add update/*.xml build.bat
 git commit -m "$release_message"
 git tag -a "$release_tag" -m "$release_message"

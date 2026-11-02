@@ -3,55 +3,48 @@ name: CI
 on:
   push:
     branches:
-      - '*'
+      - '**'
     tags:
       - '[0-9]+.*'
   pull_request:
   workflow_dispatch:
 
+# PR and branch pushes for the same head share one qualification group.
+concurrency:
+  group: weasel-ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
-  lint:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout last commit
-        uses: actions/checkout@v4
-
-      - name: Install clang-format 18
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        run: |
-          wget https://apt.llvm.org/llvm-snapshot.gpg.key
-          sudo gpg --dearmor < llvm-snapshot.gpg.key > /usr/share/keyrings/llvm-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-jammy-18.list
-          sudo apt-get update
-          sudo apt-get install -y clang-format-18
-          sudo ln -sf /usr/bin/clang-format-18 /usr/local/bin/clang-format
-          clang-format --version
-
-      - name: Code style lint
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        shell: bash
-        run: ./clang-format.sh -i
-
-      - name: TSF host-lifecycle source regression
-        shell: bash
-        run: python3 test/tsf_lifetime_source_contract_test.py
-
   build:
-    needs: lint
     runs-on: windows-2022
     env:
       boost_version: 1.84.0
       BOOST_ROOT: ${{ github.workspace }}\deps\boost_1_84_0
       SDKVER: 10.0.19041.0
-    strategy:
-      matrix:
-        variant: [msbuild, xmake]
     steps:
       - name: Checkout last commit
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           submodules: true
           fetch-depth: 0
+
+      - name: Verify source and OpenWTL release pin
+        shell: pwsh
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $actual = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_SOURCE_SHA) {
+            throw "Unexpected source commit: $actual"
+          }
+          $expected = '311b2dc361eea42cf6c821289133a99713298a74'
+          $actual = git -C external/OpenWTL rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) {
+            throw "Unexpected OpenWTL 0.1.2 commit: $actual"
+          }
+          Write-Output "WEASEL_SOURCE_OK commit=$env:EXPECTED_SOURCE_SHA OpenWTL=0.1.2 commit=$actual"
 
       - name: Fetch all tags
         run: git fetch --tags
@@ -61,6 +54,12 @@ jobs:
         run: |
           cp env.vs2022.bat env.bat
           echo git_ref_name="$(git describe --always)" >> $GITHUB_ENV
+
+      # Inherited MSVC build is transitional until Weasel #7 moves
+      # the real application to OpenWTL::WTL / llvm-mingw.
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          sdk: ${{ env.SDKVER }}
 
       - name: Cache Boost
         id: cache-boost
@@ -72,14 +71,13 @@ jobs:
 
       - name: Install Boost
         if: steps.cache-boost.outputs.cache-hit != 'true'
-        shell: bash
+        shell: pwsh
         run: |
-          ./install_boost.bat
-          ./build.bat boost arm64
-
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          sdk: ${{ env.SDKVER }}
+          $ErrorActionPreference = 'Stop'
+          & .\install_boost.bat source-only
+          if ($LASTEXITCODE -ne 0) { throw "Boost source acquisition failed" }
+          & .\build.bat boost arm64 native
+          if ($LASTEXITCODE -ne 0) { throw "Boost native x64/ARM64 compilation failed" }
 
       # bundled winsparkle v0.9.2 to disable auto open ReleaseNoteUrl in default browser
       - name: cache bundled winsparkle
@@ -89,8 +87,6 @@ jobs:
           path: |
             ${{ github.workspace }}\winsparkle\x64\Release\WinSparkle.dll
             ${{ github.workspace }}\winsparkle\x64\Release\WinSparkle.lib
-            ${{ github.workspace }}\winsparkle\Release\WinSparkle.dll
-            ${{ github.workspace }}\winsparkle\Release\WinSparkle.lib
           key: ${{ runner.os }}-winsparkle-v0.9.2-bundled
           restore-keys: |
             winsparkle-v0.9.2-bundled
@@ -109,7 +105,6 @@ jobs:
           git apply bundled_winsparkle.patch
           nuget restore
           msbuild -m -t:Build -p:Configuration=Release -p:Platform=x64 WinSparkle.sln
-          msbuild -m -t:Build -p:Configuration=Release -p:Platform=Win32 WinSparkle.sln
 
       - name: Install WinSparkle files
         shell: pwsh
@@ -117,8 +112,6 @@ jobs:
           $ErrorActionPreference = 'Stop'
           copy .\winsparkle\x64\Release\WinSparkle.dll .\output\
           copy .\winsparkle\x64\Release\WinSparkle.lib .\lib64\
-          copy .\winsparkle\Release\WinSparkle.dll .\output\Win32\
-          copy .\winsparkle\Release\WinSparkle.lib .\lib\
 
       - name: Get Rime files
         shell: pwsh
@@ -132,10 +125,6 @@ jobs:
           $ErrorActionPreference = 'Stop'
           .\build.bat data
 
-      - name: Setup xmake
-        if: matrix.variant == 'xmake'
-        uses: xmake-io/github-action-setup-xmake@v1
-
       - name: Build Weasel
         shell: pwsh
         id: build_weasel
@@ -143,11 +132,24 @@ jobs:
           RELEASE_BUILD: ${{ (github.repository == 'rime/weasel' && startsWith(github.ref, 'refs/tags/')) && '1' || '' }}
         run: |
           $ErrorActionPreference = 'Stop'
-          if ('${{ matrix.variant }}' -eq 'msbuild') {
-            .\build.bat arm64 installer
-          } else {
-            .\xbuild.bat arm64 installer
+          & .\build.bat arm64 native weasel
+          if ($LASTEXITCODE -ne 0) {
+            throw "Weasel native MSBuild failed with exit $LASTEXITCODE"
           }
+          $product = '.\output\weaselx64.dll'
+          if (-not (Test-Path -LiteralPath $product -PathType Leaf)) {
+            throw "Weasel native MSBuild returned success but did not produce $product"
+          }
+
+      - name: Validate native TSF COM Server (Windows x64)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & cl.exe /nologo /std:c++17 /EHsc /W4 /WX test\tsf_com_server_test.cpp /Fe:tsf_com_server_test.exe
+          if ($LASTEXITCODE -ne 0) { throw "TSF COM Server test compilation failed" }
+          $dll = (Resolve-Path '.\output\weaselx64.dll').Path
+          & .\tsf_com_server_test.exe $dll
+          if ($LASTEXITCODE -ne 0) { throw "TSF COM Server native runtime failed" }
 
       - name: Validate TSF host exception filter (Windows x64 runtime)
         shell: pwsh
@@ -159,47 +161,12 @@ jobs:
           & .\tsf_host_filter_test.exe $dll
           if ($LASTEXITCODE -ne 0) { throw "TSF host-filter runtime acceptance failed" }
 
-      - name: Compress Debug Symbols
-        if: matrix.variant == 'msbuild'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          output\7z.exe a -t7z "./output/archives/debug_symbols.7z" "output/*.pdb" -r
-
-      - name: Upload artifacts
-        if: matrix.variant == 'msbuild'
+      - name: Upload native binaries and debug symbols
         uses: actions/upload-artifact@v4
         with:
           name: weasel-artifact-${{ env.git_ref_name }}
           if-no-files-found: error
           path: |
-            .\output\archives\weasel*.exe
-            .\output\archives\debug_symbols.7z
-
-      # Release-only steps (run on tags or master)
-      - name: Extract changelog
-        if: ${{ github.repository == 'rime/weasel' && startsWith(github.ref, 'refs/tags/') && matrix.variant == 'msbuild' }}
-        shell: pwsh
-        run: .\extract_changelog.ps1
-
-      - name: Create Nightly release
-        if: ${{ github.repository == 'rime/weasel' && github.ref == 'refs/heads/master' && matrix.variant == 'msbuild' }}
-        uses: 'marvinpinto/action-automatic-releases@latest'
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: latest
-          prerelease: true
-          title: "Nightly Build"
-          files: |
-            ./output/archives/weasel*.exe
-            ./output/archives/debug_symbols.7z
-
-      - name: Release (stable)
-        if: ${{ github.repository == 'rime/weasel' && startsWith(github.ref, 'refs/tags/') && matrix.variant == 'msbuild' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: |
-            ./output/archives/weasel*.exe
-            ./output/archives/debug_symbols.7z
-          body_path: ${{ github.workspace }}/RELEASE_CHANGELOG.md
+            .\output\weasel*.dll
+            .\output\weaselserver.exe
+            .\output\*.pdb

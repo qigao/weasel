@@ -14,7 +14,7 @@
 
 #include <atlbase.h>
 
-#include <wtl/atlapp.h>
+#include <atlapp.h>
 #include <string>
 
 extern CAppModule _Module;
