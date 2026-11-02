@@ -108,7 +108,7 @@ LRESULT InstallOptionsDialog::OnOK(WORD, WORD code, HWND, BOOL&) {
       break;
   }
   if (IsDlgButtonChecked(IDC_RADIO_CUSTOM_DIR) == BST_CHECKED) {
-    CStringW text;
+    CString text;
     dir_.GetWindowTextW(text);
     user_dir = text;
   } else {
@@ -140,7 +140,7 @@ LRESULT InstallOptionsDialog::OnUseDefaultDir(WORD, WORD code, HWND, BOOL&) {
 LRESULT InstallOptionsDialog::OnUseCustomDir(WORD, WORD code, HWND, BOOL&) {
   CShellFileOpenDialog fileOpenDlg(
       NULL, FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_PICKFOLDERS);
-  CStringW text;
+  CString text;
   dir_.GetWindowTextW(text);
   if (!text.IsEmpty()) {
     PIDLIST_ABSOLUTE pidl;

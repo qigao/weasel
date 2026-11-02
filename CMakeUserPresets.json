@@ -1,0 +1,39 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "vcpkg",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "environment": { "VCPKG_ROOT": "$penv{VCPKG_ROOT}", "PATH": "$penv{PATH}" }
+    },
+    {
+      "name": "msvc-x64",
+      "inherits": ["msvc-base", "vcpkg"],
+      "binaryDir": "${sourceDir}/build/msvc-x64",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/msvc-x64"
+      }
+    },
+    {
+      "name": "msvc-arm64",
+      "inherits": ["msvc-base", "vcpkg"],
+      "binaryDir": "${sourceDir}/build/msvc-arm64",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-windows-static",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/msvc-arm64"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "msvc-x64", "configurePreset": "msvc-x64" },
+    { "name": "msvc-arm64", "configurePreset": "msvc-arm64" },
+    { "name": "install-msvc-x64", "configurePreset": "msvc-x64", "targets": ["install"] },
+    { "name": "install-msvc-arm64", "configurePreset": "msvc-arm64", "targets": ["install"] }
+  ],
+  "testPresets": [
+    { "name": "msvc-x64", "configurePreset": "msvc-x64", "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error" } },
+    { "name": "msvc-arm64", "configurePreset": "msvc-arm64", "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error" } }
+  ]
+}

@@ -1,4 +1,5 @@
 #pragma once
+#include <WeaselTargetVersion.h>
 #ifndef D2D_H
 #define D2D_H
 

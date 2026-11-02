@@ -1,4 +1,5 @@
 #pragma once
+#include <WeaselTargetVersion.h>
 #include <WeaselIPCData.h>
 #include <functional>
 #include <memory>

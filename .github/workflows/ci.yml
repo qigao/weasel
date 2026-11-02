@@ -170,3 +170,41 @@ jobs:
             .\output\weasel*.dll
             .\output\weaselserver.exe
             .\output\*.pdb
+
+      # Issue #7: qualify the first real CMake product slice independently of
+      # the complete MSBuild graph above. CTest loads this graph's own DLL.
+      - name: Build CMake TSF and Setup (Windows x64)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --preset msvc-x64
+          if ($LASTEXITCODE -ne 0) { throw 'CMake x64 configure failed' }
+          cmake --build --preset msvc-x64
+          if ($LASTEXITCODE -ne 0) { throw 'CMake x64 product build failed' }
+          ctest --preset msvc-x64
+          if ($LASTEXITCODE -ne 0) { throw 'CMake x64 DLL tests failed' }
+          cmake --build --preset install-msvc-x64
+          if ($LASTEXITCODE -ne 0) { throw 'CMake x64 staging failed' }
+
+      - name: Build CMake TSF and Setup (Windows ARM64 cross compile)
+        shell: cmd
+        run: |
+          set "WEASEL_VCPKG_ROOT=%VCPKG_ROOT%"
+          call "%VSINSTALLDIR%Common7\Tools\VsDevCmd.bat" -arch=arm64 -host_arch=x64
+          if errorlevel 1 exit /b 1
+          set "VCPKG_ROOT=%WEASEL_VCPKG_ROOT%"
+          cmake --preset msvc-arm64
+          if errorlevel 1 exit /b 1
+          cmake --build --preset msvc-arm64
+          if errorlevel 1 exit /b 1
+          cmake --build --preset install-msvc-arm64
+          if errorlevel 1 exit /b 1
+
+      - name: Upload CMake TSF and Setup products
+        uses: actions/upload-artifact@v4
+        with:
+          name: weasel-cmake-${{ env.git_ref_name }}
+          if-no-files-found: error
+          path: |
+            build/install/msvc-x64/*
+            build/install/msvc-arm64/*
