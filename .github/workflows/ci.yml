@@ -181,8 +181,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'CMake x64 configure failed' }
           cmake --build --preset msvc-x64
           if ($LASTEXITCODE -ne 0) { throw 'CMake x64 product build failed' }
-          ctest --preset msvc-x64
-          if ($LASTEXITCODE -ne 0) { throw 'CMake x64 DLL tests failed' }
+          ctest --preset msvc-x64 --verbose
+          if ($LASTEXITCODE -ne 0) { throw 'CMake x64 tests failed' }
           cmake --build --preset install-msvc-x64
           if ($LASTEXITCODE -ne 0) { throw 'CMake x64 staging failed' }
 
@@ -230,8 +230,8 @@ jobs:
             cmake --build --preset $preset
             if ($LASTEXITCODE -ne 0) { throw "$preset product build failed" }
             if ($preset -eq 'llvm-x64') {
-              ctest --preset $preset
-              if ($LASTEXITCODE -ne 0) { throw "$preset native DLL tests failed" }
+              ctest --preset $preset --verbose
+              if ($LASTEXITCODE -ne 0) { throw "$preset native tests failed" }
             }
             cmake --build --preset "install-$preset"
             if ($LASTEXITCODE -ne 0) { throw "$preset staging failed" }
@@ -247,3 +247,11 @@ jobs:
             build/install/msvc-arm64/*
             build/install/llvm-x64/*
             build/install/llvm-arm64/*
+
+      - name: Upload parser test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weasel-parser-tests-${{ env.git_ref_name }}
+          if-no-files-found: ignore
+          path: build/*/test/TestResponseParser/response-parser.xml

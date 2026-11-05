@@ -7,3 +7,6 @@
 [submodule "external/OpenWTL"]
 	path = external/OpenWTL
 	url = https://github.com/qigao/OpenWTL.git
+[submodule "external/SaltsCore"]
+	path = external/SaltsCore
+	url = https://github.com/qigao/salts-core.git
