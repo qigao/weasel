@@ -2,6 +2,7 @@
 #include <boost/archive/text_woarchive.hpp>
 #include <sstream>
 #include <string>
+#include <limits>
 // TinyTest's assertion macros must follow Boost's declarations.
 #include <tinytest.hpp>
 
@@ -10,14 +11,61 @@ bool Parse(weasel::ResponseParser& parser, std::wstring response) {
   return parser(response.data(), static_cast<UINT>(response.size()));
 }
 
-// Match the current Server's ctx.cand payload, including archive metadata.
-std::wstring Candidates(const weasel::CandidateInfo& candidates) {
+// Match the current Server's payloads, including archive metadata.
+template <typename T>
+std::wstring ArchiveLine(const wchar_t* key, const T& value) {
   std::wstringstream stream;
   {
     boost::archive::text_woarchive archive(stream);
-    archive << candidates;
+    archive << value;
   }
-  return L"ctx.cand=" + stream.str() + L"\n";
+  return std::wstring(key) + L"=" + stream.str() + L"\n";
+}
+
+std::wstring Candidates(const weasel::CandidateInfo& candidates) {
+  return ArchiveLine(L"ctx.cand", candidates);
+}
+
+struct Outputs {
+  std::wstring commit = L"old commit";
+  weasel::Context context;
+  weasel::Status status;
+  weasel::Config config;
+  weasel::UIStyle style;
+
+  Outputs() {
+    context.preedit.str = L"old preedit";
+    context.aux.str = L"old aux";
+    context.cinfo.candies.emplace_back(L"old candidate");
+    status.schema_id = L"old schema";
+    style.font_face = L"old font";
+    style.font_point = 17;
+  }
+
+  weasel::ResponseParser Parser() {
+    return weasel::ResponseParser(&commit, &context, &status, &config, &style);
+  }
+};
+
+void CheckUnchanged(Outputs& actual, const Outputs& before) {
+  check(actual.commit == before.commit);
+  check(actual.context == before.context);
+  check(actual.status == before.status);
+  check_equal(actual.config.inline_preedit, before.config.inline_preedit);
+  check_false(actual.style != before.style);
+}
+
+std::wstring Updates() {
+  weasel::CandidateInfo candidates;
+  candidates.candies.emplace_back(L"new candidate");
+  weasel::UIStyle style;
+  style.font_face = L"new font";
+  style.font_point = 24;
+  return L"action=commit,ctx,status,config,style\ncommit=new commit\n"
+         L"ctx.preedit=new preedit\nctx.aux=new aux\n"
+         L"status.schema_id=new schema\nstatus.ascii_mode=1\n"
+         L"config.inline_preedit=1\n" + Candidates(candidates) +
+         ArchiveLine(L"style", style);
 }
 }  // namespace
 
@@ -213,6 +261,157 @@ spec("Weasel response parser") {
                           L"ctx.preedit.cursor=3\n.\n"));
       check(context.preedit.str == L"text");
       check_empty(context.preedit.attributes);
+    }
+  }
+
+  group("transactional publication") {
+    it("publishes every requested destination after a complete response") {
+      Outputs state;
+      auto parser = state.Parser();
+      check(Parse(parser, Updates() + L".\n"));
+      check(state.commit == L"new commit");
+      check(state.context.preedit.str == L"new preedit");
+      check(state.context.aux.str == L"new aux");
+      check_size(state.context.cinfo.candies, 1u);
+      check(state.context.cinfo.candies[0].str == L"new candidate");
+      check(state.status.schema_id == L"new schema");
+      check(state.status.ascii_mode);
+      check(state.config.inline_preedit);
+      check(state.style.font_face == L"new font");
+      check_equal(state.style.font_point, 24);
+    }
+
+    it("rolls back every destination when the terminator is missing") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      check_false(Parse(parser, Updates()));
+      CheckUnchanged(state, before);
+    }
+
+    it("requires the terminator's newline before publishing") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      check_false(Parse(parser, Updates() + L"."));
+      CheckUnchanged(state, before);
+    }
+
+    it("rejects a malformed candidate archive header without publishing") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      check_false(Parse(parser, Updates() + L"ctx.cand=invalid archive\n.\n"));
+      CheckUnchanged(state, before);
+    }
+
+    it("rejects a malformed style archive header without publishing") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      check_false(Parse(parser, Updates() + L"style=invalid archive\n.\n"));
+      CheckUnchanged(state, before);
+    }
+
+    it("rolls back a candidate archive that fails during extraction") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      weasel::CandidateInfo candidates;
+      candidates.candies.emplace_back(L"replacement candidate");
+      candidates.comments.emplace_back(L"a comment");
+      std::wstring truncated = Candidates(candidates);
+      truncated.resize(truncated.size() / 2);
+      check_false(Parse(parser, Updates() + truncated + L"\n.\n"));
+      CheckUnchanged(state, before);
+    }
+
+    it("rolls back a style archive that fails during extraction") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      weasel::UIStyle style;
+      style.font_face = L"replacement font";
+      style.font_point = 36;
+      std::wstring truncated = ArchiveLine(L"style", style);
+      truncated.resize(truncated.size() / 2);
+      check_false(Parse(parser, Updates() + truncated + L"\n.\n"));
+      CheckUnchanged(state, before);
+    }
+
+    it("accepts a valid response on the same parser after an archive failure") {
+      Outputs state;
+      auto parser = state.Parser();
+      check_false(Parse(parser, L"action=ctx\nctx.cand=invalid\n.\n"));
+      check(Parse(parser, Updates() + L".\n"));
+      check(state.commit == L"new commit");
+      check(state.context.preedit.str == L"new preedit");
+      check(state.status.schema_id == L"new schema");
+      check(state.config.inline_preedit);
+      check_equal(state.style.font_point, 24);
+    }
+
+    it("does not inherit enabled actions from a previous successful response") {
+      std::wstring commit;
+      weasel::ResponseParser parser(&commit);
+      check(Parse(parser, L"action=commit\ncommit=first\n.\n"));
+      check(Parse(parser, L"commit=inactive\n.\n"));
+      check(commit == L"first");
+    }
+
+    it("does not inherit enabled actions from a previous incomplete response") {
+      std::wstring commit = L"before";
+      weasel::ResponseParser parser(&commit);
+      check_false(Parse(parser, L"action=commit\ncommit=unpublished\n"));
+      check(Parse(parser, L"commit=inactive\n.\n"));
+      check(commit == L"before");
+    }
+  }
+
+  group("optional destinations and input limits") {
+    it("updates configuration without requiring a context destination") {
+      weasel::Config config;
+      weasel::ResponseParser parser(nullptr, nullptr, nullptr, &config);
+      check(Parse(parser, L"action=config\nconfig.inline_preedit=1\n.\n"));
+      check(config.inline_preedit);
+    }
+
+    it("ignores configuration when only a context destination is requested") {
+      weasel::Context context;
+      weasel::ResponseParser parser(nullptr, &context);
+      check(Parse(parser, L"action=config,ctx\nconfig.inline_preedit=1\n"
+                          L"ctx.preedit=valid\n.\n"));
+      check(context.preedit.str == L"valid");
+    }
+
+    it("rejects a null input pointer before reading it") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      check_false(parser(nullptr, 1));
+      CheckUnchanged(state, before);
+    }
+
+    it("rejects an over-limit declared length before reading the buffer") {
+      Outputs state;
+      const Outputs before = state;
+      auto parser = state.Parser();
+      wchar_t buffer = L'x';
+      check_false(parser(&buffer, weasel::ResponseParser::kMaxResponseLength + 1));
+      check_false(parser(&buffer, (std::numeric_limits<UINT>::max)()));
+      CheckUnchanged(state, before);
+    }
+
+    it("accepts an exactly full pipe buffer ending in a complete terminator") {
+      std::wstring commit;
+      weasel::ResponseParser parser(&commit);
+      std::wstring response = L"action=commit\ncommit=boundary\n#";
+      response.append(weasel::ResponseParser::kMaxResponseLength -
+                          response.size() - 3, L'x');
+      response += L"\n.\n";
+      check_equal(response.size(), weasel::ResponseParser::kMaxResponseLength);
+      check(Parse(parser, response));
+      check(commit == L"boundary");
     }
   }
 }

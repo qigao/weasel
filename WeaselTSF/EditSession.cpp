@@ -12,6 +12,8 @@ STDMETHODIMP WeaselTSF::DoEditSession(TfEditCookie ec) {
                                 &_cand->style());
 
   bool ok = m_client.GetResponseData(std::ref(parser));
+  if (!ok)
+    return E_FAIL;
 
   _UpdateLanguageBar(_status);
 

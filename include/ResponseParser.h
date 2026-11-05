@@ -10,6 +10,9 @@ class Deserializer;
 
 // 解析server回應文本
 struct ResponseParser {
+  // UTF-16 code units in the existing 64 KiB Windows pipe receive buffer.
+  static constexpr UINT kMaxResponseLength = 32 * 1024;
+
   std::map<std::wstring, std::shared_ptr<Deserializer> > deserializers;
 
   std::wstring* p_commit;
@@ -24,9 +27,11 @@ struct ResponseParser {
                  Config* config = 0,
                  UIStyle* style = 0);
 
-  // 重載函數調用運算符, 以扮做ResponseHandler
+  // Borrowed input/outputs; synchronous use on their owner thread only.
+  // Publish all requested outputs at a complete terminator, or leave them intact.
   bool operator()(LPWSTR buffer, UINT length);
 
+ private:
   // 處理一行回應文本
   void Feed(const std::wstring& line);
 };

@@ -104,7 +104,7 @@ Products are isolated in `build/<preset>/bin`; install staging is
 `build/install/<preset>`. CTest passes `$<TARGET_FILE:WeaselTSF>` to the
 existing COM factory/identity/lifetime and host exception filter tests,
 loading the corresponding CMake DLL without installation or registration.
-CTest also runs the production response parser through the 16-case
+CTest also runs the production response parser through the 31-case
 [TinyTest suite](../test/TestResponseParser/README.md), without starting a
 server. It emits TAP and a profile-local JUnit report; CI uploads these reports
 and fails on test errors. Both ARM64 profiles compile the suite for native
@@ -147,3 +147,7 @@ the parser test to fail with CTest status 8; the expectation was restored and
 the suite passed again. LLVM ARM64 compiled and linked the parser suite and
 its static TinyTest runtime, without native execution. MSVC ARM64 remains a
 CI build requirement because the local ARM64 compiler is unavailable.
+
+The subsequent [transactional parser fix](RESPONSE_PARSER.md) expanded the
+suite to 31 cases. Both x64 compiler profiles passed the parser and DLL tests,
+and LLVM ARM64 compiled the changed IPC/TSF graph and tests locally.
