@@ -22,7 +22,12 @@ requesting application builds with another architecture fails configuration.
 Use CMake 3.25 or newer, Ninja, Visual Studio C++ tools and Windows SDK.
 `VCPKG_ROOT` names the selected vcpkg checkout. The versioned manifest restores
 static Boost, with no `BOOST_ROOT` or b2 invocation for CMake builds.
-Initialize OpenWTL with `git submodule update --init external/OpenWTL`.
+Initialize the source dependencies with
+`git submodule update --init external/OpenWTL external/SaltsCore`.
+When tests are enabled, only SaltsCore's canonical `tinytest` module is added:
+its `Salts::TinyTest` static C runtime backs the C++17 response-parser suite.
+The submodule is pinned to `c96696affa3feaa62ec6052aee99a8f2cc596bb1`;
+the remaining SaltsCore modules are not built or installed by this graph.
 
 The x64 presets set `WEASEL_DEPENDENCY_ROOT` to the source directory, using
 the existing acquisition layout:
@@ -99,6 +104,12 @@ Products are isolated in `build/<preset>/bin`; install staging is
 `build/install/<preset>`. CTest passes `$<TARGET_FILE:WeaselTSF>` to the
 existing COM factory/identity/lifetime and host exception filter tests,
 loading the corresponding CMake DLL without installation or registration.
+CTest also runs the production response parser through the 16-case
+[TinyTest suite](../test/TestResponseParser/README.md), without starting a
+server. It emits TAP and a profile-local JUnit report; CI uploads these reports
+and fails on test errors. Both ARM64 profiles compile the suite for native
+execution later. The former parser MSBuild project has been replaced by this
+CMake target; the manual `TestWeaselIPC` console remains separate.
 
 Install presets stage the Weasel binaries only. Rime/WinSparkle runtime DLLs,
 Rime data, installer generation and TSF registration remain under the existing
@@ -128,3 +139,11 @@ been executed on a native ARM64 host.
 ARM64 application dependencies, live Server/Deployer and candidate
 GUI behavior, engine integration, TSF host and installer acceptance remain
 open. Build and DLL-test results do not establish those runtime gates.
+
+The response-parser TinyTest migration also passed locally on 2026-11-05:
+all 16 cases passed with MSVC x64 and LLVM-MinGW x64, alongside the two
+existing DLL tests. A temporary wrong candidate-selection expectation caused
+the parser test to fail with CTest status 8; the expectation was restored and
+the suite passed again. LLVM ARM64 compiled and linked the parser suite and
+its static TinyTest runtime, without native execution. MSVC ARM64 remains a
+CI build requirement because the local ARM64 compiler is unavailable.

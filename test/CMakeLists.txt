@@ -20,3 +20,8 @@ add_test(NAME weasel.tsf_host_filter
   COMMAND tsf_host_filter_test "$<TARGET_FILE:WeaselTSF>")
 set_tests_properties(weasel.tsf_com_server weasel.tsf_host_filter
   PROPERTIES LABELS "tsf;native" TIMEOUT 60)
+include(GNUInstallDirs)
+add_subdirectory("${PROJECT_SOURCE_DIR}/external/SaltsCore/tinytest"
+  "${CMAKE_CURRENT_BINARY_DIR}/tinytest" EXCLUDE_FROM_ALL)
+set_target_properties(saltscore_tinytest PROPERTIES FOLDER "Tests/Support")
+add_subdirectory(TestResponseParser)
