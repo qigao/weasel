@@ -5,15 +5,20 @@ add_library(WeaselTSF SHARED
   KeyEventSink.cpp LanguageBar.cpp Register.cpp Server.cpp
   TextEditSink.cpp ThreadMgrEventSink.cpp WeaselTSF.cpp
   WeaselTSF.rc WeaselTSF.def)
+if(MINGW)
+  # Resolve TSF GUIDs from the complete SDK before MinGW's partial uuid archive.
+  target_link_libraries(WeaselTSF PRIVATE weasel_sdk_uuid weasel_tsf_sdk)
+endif()
 target_link_libraries(WeaselTSF PRIVATE WeaselIPC WeaselUI)
 target_compile_definitions(WeaselTSF PRIVATE WEASELTSF_EXPORTS)
-target_include_directories(WeaselTSF PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-if(CMAKE_CXX_COMPILER_ARCHITECTURE_ID STREQUAL "ARM64")
+target_include_directories(WeaselTSF PRIVATE
+  "$<$<COMPILE_LANGUAGE:RC>:${CMAKE_CURRENT_SOURCE_DIR}>")
+if(WEASEL_TARGET_ARCH STREQUAL "ARM64")
   set(_weasel_dll_name weaselARM64)
   target_compile_definitions(WeaselTSF PRIVATE "$<$<COMPILE_LANGUAGE:RC>:ARM64>")
 else()
   set(_weasel_dll_name weaselx64)
   target_compile_definitions(WeaselTSF PRIVATE "$<$<COMPILE_LANGUAGE:RC>:WIN64>")
 endif()
-set_target_properties(WeaselTSF PROPERTIES OUTPUT_NAME "${_weasel_dll_name}" FOLDER "Product")
+set_target_properties(WeaselTSF PROPERTIES PREFIX "" OUTPUT_NAME "${_weasel_dll_name}" FOLDER "Product")
 install(TARGETS WeaselTSF RUNTIME DESTINATION .)

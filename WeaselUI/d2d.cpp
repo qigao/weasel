@@ -4,6 +4,7 @@
 #include <VersionHelpers.hpp>
 #include <wincodec.h>
 #include <algorithm>
+#include <cmath>
 #include <regex>
 
 #pragma comment(lib, "dxguid.lib")
@@ -685,8 +686,8 @@ void D2D::GetTextSize(const wstring& text,
 
   DWRITE_TEXT_METRICS textMetrics;
   HR(pTextLayout->GetMetrics(&textMetrics));
-  sz = D2D1::SizeF(ceil(textMetrics.widthIncludingTrailingWhitespace),
-                   ceil(textMetrics.height));
+  sz = D2D1::SizeF(std::ceil(textMetrics.widthIncludingTrailingWhitespace),
+                   std::ceil(textMetrics.height));
   lpSize->cx = (int)sz.width;
   lpSize->cy = (int)sz.height;
 

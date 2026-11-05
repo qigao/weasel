@@ -30,15 +30,51 @@
         "WEASEL_BUILD_APPLICATIONS": "OFF",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/msvc-arm64"
       }
+    },
+    {
+      "name": "llvm-environment",
+      "hidden": true,
+      "environment": {
+        "OPENATL_LLVM_MINGW_BIN": "$penv{OPENATL_LLVM_MINGW_BIN}",
+        "WEASEL_WINDOWS_SDK_BIN": "$penv{WEASEL_WINDOWS_SDK_BIN}",
+        "WEASEL_LLVM_TOOLCHAIN": "${sourceDir}/external/OpenWTL/cmake/toolchains/llvm-mingw.cmake",
+        "PATH": "${sourceDir}/build/${presetName}/bin;$env{OPENATL_LLVM_MINGW_BIN};$penv{PATH}"
+      }
+    },
+    {
+      "name": "llvm-x64",
+      "inherits": ["llvm-base", "llvm-environment", "vcpkg"],
+      "binaryDir": "${sourceDir}/build/llvm-x64",
+      "cacheVariables": {
+        "OPENATL_TARGET_ARCH": "x86_64",
+        "VCPKG_TARGET_TRIPLET": "x64-weasel-llvm",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/llvm-x64"
+      }
+    },
+    {
+      "name": "llvm-arm64",
+      "inherits": ["llvm-base", "llvm-environment", "vcpkg"],
+      "binaryDir": "${sourceDir}/build/llvm-arm64",
+      "cacheVariables": {
+        "OPENATL_TARGET_ARCH": "aarch64",
+        "VCPKG_TARGET_TRIPLET": "arm64-weasel-llvm",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/llvm-arm64"
+      }
     }
   ],
   "buildPresets": [
     { "name": "msvc-x64", "configurePreset": "msvc-x64" },
     { "name": "msvc-arm64", "configurePreset": "msvc-arm64" },
+    { "name": "llvm-x64", "configurePreset": "llvm-x64" },
+    { "name": "llvm-arm64", "configurePreset": "llvm-arm64" },
+    { "name": "install-llvm-x64", "configurePreset": "llvm-x64", "targets": ["install"] },
+    { "name": "install-llvm-arm64", "configurePreset": "llvm-arm64", "targets": ["install"] },
     { "name": "install-msvc-x64", "configurePreset": "msvc-x64", "targets": ["install"] },
     { "name": "install-msvc-arm64", "configurePreset": "msvc-arm64", "targets": ["install"] }
   ],
   "testPresets": [
+    { "name": "llvm-x64", "configurePreset": "llvm-x64", "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error" } },
+    { "name": "llvm-arm64", "configurePreset": "llvm-arm64", "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error" } },
     { "name": "msvc-x64", "configurePreset": "msvc-x64", "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error" } },
     { "name": "msvc-arm64", "configurePreset": "msvc-arm64", "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error" } }
   ]

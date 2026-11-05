@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "WeaselClientImpl.h"
 #include <StringAlgorithm.hpp>
+#include <algorithm>
 
 using namespace weasel;
 
@@ -121,9 +122,9 @@ void ClientImpl::UpdateInputPosition(RECT const& rc) {
   int hi_res =
       static_cast<int>(rc.bottom - rc.top >= 128 || rc.left < -2048 ||
                        rc.left >= 2048 || rc.top < -2048 || rc.top >= 2048);
-  int left = max(-2048, min(2047, rc.left >> hi_res));
-  int top = max(-2048, min(2047, rc.top >> hi_res));
-  int height = max(0, min(127, (rc.bottom - rc.top) >> hi_res));
+  int left = std::clamp<LONG>(rc.left >> hi_res, -2048, 2047);
+  int top = std::clamp<LONG>(rc.top >> hi_res, -2048, 2047);
+  int height = std::clamp<LONG>((rc.bottom - rc.top) >> hi_res, 0, 127);
   DWORD compressed_rect = ((hi_res & 0x01) << 31) | ((height & 0x7f) << 24) |
                           ((top & 0xfff) << 12) | (left & 0xfff);
   _SendMessage(WEASEL_IPC_UPDATE_INPUT_POS, compressed_rect, session_id);
