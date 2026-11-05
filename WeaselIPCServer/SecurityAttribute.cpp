@@ -6,6 +6,14 @@
 #define SDDL_ALL_APP_PACKAGES TEXT("AC")
 #endif
 
+// SDDL spellings from the Windows SDK, absent in MinGW's sddl.h.
+#ifndef SDDL_NO_WRITE_UP
+#define SDDL_NO_WRITE_UP TEXT("NW")
+#endif
+#ifndef SDDL_ML_LOW
+#define SDDL_ML_LOW TEXT("LW")
+#endif
+
 #define LOW_INTEGRITY_SDDL_SACL \
   SDDL_SACL                     \
   SDDL_DELIMINATOR              \

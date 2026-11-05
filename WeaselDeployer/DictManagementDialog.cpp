@@ -142,10 +142,10 @@ LRESULT DictManagementDialog::OnRestore(WORD, WORD code, HWND, BOOL&) {
   all_files_str.LoadStringW(IDS_STR_ALL_FILES);
 
   const std::wstring dict_snapshot_name =
-      dict_snapshot_str + L" (*.userdb.txt)";
+      std::wstring(dict_snapshot_str.GetString()) + L" (*.userdb.txt)";
   const std::wstring kcss_dict_snapshot_name =
-      kcss_dict_snapshot_str + L" (*.userdb.kct.snapshot)";
-  const std::wstring all_files_name = all_files_str;
+      std::wstring(kcss_dict_snapshot_str.GetString()) + L" (*.userdb.kct.snapshot)";
+  const std::wstring all_files_name(all_files_str.GetString());
 
   COMDLG_FILTERSPEC filter[3] = {
       {dict_snapshot_name.c_str(), L"*.userdb.txt"},
@@ -176,8 +176,9 @@ LRESULT DictManagementDialog::OnExport(WORD, WORD code, HWND, BOOL&) {
   record_count_str.LoadStringW(IDS_STR_RECORD_COUNT);
   txt_files_str.LoadStringW(IDS_STR_TXT_FILES);
   all_files_str.LoadStringW(IDS_STR_ALL_FILES);
-  const std::wstring txt_files_name = txt_files_str + L" (*.txt)";
-  const std::wstring all_files_name = all_files_str;
+  const std::wstring txt_files_name =
+      std::wstring(txt_files_str.GetString()) + L" (*.txt)";
+  const std::wstring all_files_name(all_files_str.GetString());
 
   int sel = user_dict_list_.GetCurSel();
   if (sel < 0 || sel >= user_dict_list_.GetCount()) {
@@ -227,8 +228,9 @@ LRESULT DictManagementDialog::OnImport(WORD, WORD code, HWND, BOOL&) {
   record_count_str.LoadStringW(IDS_STR_RECORD_COUNT);
   txt_files_str.LoadStringW(IDS_STR_TXT_FILES);
   all_files_str.LoadStringW(IDS_STR_ALL_FILES);
-  const std::wstring txt_files_name = txt_files_str + L" (*.txt)";
-  const std::wstring all_files_name = all_files_str;
+  const std::wstring txt_files_name =
+      std::wstring(txt_files_str.GetString()) + L" (*.txt)";
+  const std::wstring all_files_name(all_files_str.GetString());
 
   int sel = user_dict_list_.GetCurSel();
   if (sel < 0 || sel >= user_dict_list_.GetCount()) {

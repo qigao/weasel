@@ -1,6 +1,6 @@
 # CMake product build (issue #7)
 
-The `msvc-x64` preset builds `WeaselServer.exe`, `WeaselDeployer.exe`,
+The `msvc-x64` and `llvm-x64` presets build `WeaselServer.exe`, `WeaselDeployer.exe`,
 `WeaselSetup.exe` and `weaselx64.dll`, including the existing IPC client,
 IPC server, Rime adapter and candidate UI source libraries. All Weasel targets
 consume the pinned `external/OpenWTL` source through `OpenWTL::WTL`.
@@ -11,8 +11,8 @@ resources use OpenWTL's `atlres.h`.
 are loaded, including DirectComposition declarations. Boost remains required
 by the current IPC protocol and thread implementation.
 
-The ARM64 preset explicitly disables `WEASEL_BUILD_APPLICATIONS`, retaining
-its TSF/UI/IPC client/Setup graph qualified in
+The ARM64 presets explicitly disable `WEASEL_BUILD_APPLICATIONS`, retaining
+the TSF/UI/IPC client/Setup graph. Its MSVC build was qualified in
 [PR #16 CI](https://github.com/qigao/weasel/actions/runs/41426017622).
 Server and Deployer currently depend on x64 Rime and WinSparkle bundles;
 requesting application builds with another architecture fails configuration.
@@ -24,7 +24,7 @@ Use CMake 3.25 or newer, Ninja, Visual Studio C++ tools and Windows SDK.
 static Boost, with no `BOOST_ROOT` or b2 invocation for CMake builds.
 Initialize OpenWTL with `git submodule update --init external/OpenWTL`.
 
-The x64 preset sets `WEASEL_DEPENDENCY_ROOT` to the source directory, using
+The x64 presets set `WEASEL_DEPENDENCY_ROOT` to the source directory, using
 the existing acquisition layout:
 
 | Files | Existing producer |
@@ -38,6 +38,10 @@ them as `Rime::Rime` and `WinSparkle::WinSparkle`; missing files stop configure.
 It does not discover another SDK or build a second Rime/WinSparkle copy.
 Rime source migration and its remaining Boost/logging dependencies belong
 to issues #9 and #10. This graph does not establish a source build of Rime.
+LLVM-MinGW x64 links the same acquired import libraries: the Rime and
+WinSparkle entry points used here have C linkage, and library-owned objects
+remain behind their existing API handles and release functions. This does
+not qualify live engine, updater or GUI behavior with the LLVM-built apps.
 
 ## Build and test
 
@@ -45,7 +49,7 @@ to issues #9 and #10. This graph does not establish a source build of Rime.
 | --- | --- | --- |
 | `msvc-x64` | MSVC x64 | Server, Deployer, TSF, Setup and supporting libraries |
 | `msvc-arm64` | MSVC ARM64 | TSF, Setup, candidate UI and IPC client |
-| `llvm-x64` | LLVM-MinGW x64 | TSF, Setup, candidate UI and IPC client |
+| `llvm-x64` | LLVM-MinGW x64 | Server, Deployer, TSF, Setup and supporting libraries |
 | `llvm-arm64` | LLVM-MinGW ARM64 | TSF, Setup, candidate UI and IPC client |
 
 Enter a developer prompt with `VsDevCmd.bat -arch=x64 -host_arch=x64`, then:
@@ -85,10 +89,10 @@ using OpenWTL's GUID formatter. They are not installed or redistributed.
 MinGW continues to supply the standard Win32 and CRT headers. Native SDK RC
 handles the original UTF-16 resource files and excludes Microsoft ATL/MFC.
 
-The LLVM profiles explicitly disable Server/Deployer because the acquired
-application bundle is qualified with MSVC. Setup embeds its process manifest
-through a resource file on LLVM-MinGW. The existing native DLL tests use their
-Unicode console entry points with either compiler. Run ARM64 CTest only on an
+The LLVM ARM64 profile disables Server/Deployer until matching application
+dependencies are available. Setup, Server and Deployer embed their process
+manifests through resource files on LLVM-MinGW. The existing native DLL tests
+use their Unicode console entry points with either compiler. Run ARM64 CTest only on an
 ARM64 Windows host; the x64 CI runner builds and stages the ARM64 products.
 
 Products are isolated in `build/<preset>/bin`; install staging is
@@ -110,8 +114,12 @@ The existing workflow builds this graph, runs the two x64 CTest DLL tests
 and stages all four Weasel products. ARM64 retains the graph passed in #16;
 the local MSVC ARM64 toolset is unavailable.
 
-LLVM-MinGW x64 TSF/Setup compilation, both native DLL tests and staging passed
-locally on 2026-11-05 with LLVM-MinGW 20261020 and Windows SDK 10.0.26100.0.
+LLVM-MinGW x64 compilation and linking of all four products, both native DLL
+tests and staging passed locally on 2026-11-05 with LLVM-MinGW 20261020 and
+Windows SDK 10.0.26100.0, against the same acquired dependency bundle.
+Extracted Server/Deployer manifests contain Common Controls v6 and per-monitor
+DPI awareness. Import inspection confirms the expected Rime/WinSparkle C
+entry points and no LLVM C++ runtime DLL dependency for those applications.
 The full MSVC x64 graph, both DLL tests and staging also passed after the
 shared source portability fixes. LLVM ARM64 TSF/Setup and both test executables
 also compiled and linked, and install staging passed. ARM64 tests have not

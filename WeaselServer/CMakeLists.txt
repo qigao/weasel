@@ -4,7 +4,11 @@ add_executable(WeaselServer WIN32
 target_link_libraries(WeaselServer PRIVATE
   RimeWithWeasel WeaselIPCServer WeaselIPC WinSparkle::WinSparkle Boost::thread imm32)
 target_include_directories(WeaselServer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_options(WeaselServer PRIVATE /MANIFEST:EMBED
-  "/MANIFESTINPUT:${PROJECT_SOURCE_DIR}/PerMonitorHighDPIAware.manifest")
+if(MSVC)
+  target_link_options(WeaselServer PRIVATE /MANIFEST:EMBED
+    "/MANIFESTINPUT:${PROJECT_SOURCE_DIR}/PerMonitorHighDPIAware.manifest")
+else()
+  target_sources(WeaselServer PRIVATE WeaselServer.manifest.rc)
+endif()
 set_target_properties(WeaselServer PROPERTIES FOLDER "Product")
 install(TARGETS WeaselServer RUNTIME DESTINATION .)

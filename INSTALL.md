@@ -47,9 +47,9 @@ set BOOST_ROOT=X:\path\to\boost_N_NN_N
 
 ### CMake native product build
 
-The x64 MSVC CMake preset builds Server, Deployer, the TSF DLL, candidate UI,
-IPC libraries and Setup. The ARM64 preset builds TSF, UI, IPC client and Setup.
-LLVM-MinGW x64/ARM64 presets build the TSF/Setup graph using the selected
+The x64 MSVC and LLVM-MinGW CMake presets build Server, Deployer, the TSF DLL,
+candidate UI, IPC libraries and Setup. ARM64 presets build TSF, UI, IPC client
+and Setup. LLVM-MinGW presets use the selected
 Windows SDK's TSF declarations and resource compiler. All presets register
 the existing DLL tests with CTest; ARM64 tests require an ARM64 Windows host.
 See [the CMake build instructions](docs/CMAKE_BUILD.md) for the current scope,

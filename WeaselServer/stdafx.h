@@ -22,6 +22,8 @@
 #endif // _WTL_SUPPORT_SDK_ATL3
 // wtl10 require _RICHEDIT_VER > 0x0300, undef it first
 #undef _RICHEDIT_VER
+// Load Boost before OpenATL's _MSC_VER compatibility shim selects MSVC intrinsics.
+#include <boost/thread.hpp>
 #include <atlbase.h>
 #include <atlwin.h>
 

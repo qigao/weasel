@@ -11,10 +11,11 @@
 
 #include <windows.h>
 
+// Load Boost before OpenATL's _MSC_VER compatibility shim selects MSVC intrinsics.
+#include <boost/thread.hpp>
+
 #include <atlbase.h>
 #include <atlwin.h>
 
 #include <atlapp.h>
 #include <atlframe.h>
-
-#include <boost/thread.hpp>

@@ -5,9 +5,9 @@
 
 WeaselService* WeaselService::_service = NULL;
 
-WeaselService::WeaselService(BOOL fCanStop = TRUE,
-                             BOOL fCanShutdown = TRUE,
-                             BOOL fCanPauseContinue = FALSE) {
+WeaselService::WeaselService(BOOL fCanStop,
+                             BOOL fCanShutdown,
+                             BOOL fCanPauseContinue) {
   _statusHandle = NULL;
 
   // The service runs in its own process.

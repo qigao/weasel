@@ -60,11 +60,11 @@ RimeWithWeaselHandler::~RimeWithWeaselHandler() {
 }
 
 bool add_session = false;
-void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize);
-bool _UpdateUIStyleColor(RimeConfig* config,
-                         UIStyle& style,
-                         const std::string& color = std::string());
-void _LoadAppOptions(RimeConfig* config, AppOptionsByAppName& app_options);
+static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize);
+static bool _UpdateUIStyleColor(RimeConfig* config,
+                                UIStyle& style,
+                                const std::string& color = std::string());
+static void _LoadAppOptions(RimeConfig* config, AppOptionsByAppName& app_options);
 
 void _RefreshTrayIcon(const RimeSessionId session_id,
                       const std::function<void()> _UpdateUICallback) {
@@ -1294,49 +1294,51 @@ void LoadWeaselUIStyle(RimeConfig* config,
   if (style.layout_type != UIStyle::LAYOUT_VERTICAL_TEXT) {
     // hilite_padding vs spacing
     // if hilite_padding over spacing, increase spacing
-    style.spacing = max(style.spacing, style.hilite_padding_y * 2);
+    style.spacing = (std::max)(style.spacing, style.hilite_padding_y * 2);
     // hilite_padding vs candidate_spacing
     if (style.layout_type == UIStyle::LAYOUT_VERTICAL_FULLSCREEN ||
         style.layout_type == UIStyle::LAYOUT_VERTICAL) {
       // vertical, if hilite_padding_y over candidate spacing,
       // increase candidate spacing
       style.candidate_spacing =
-          max(style.candidate_spacing, style.hilite_padding_y * 2);
+          (std::max)(style.candidate_spacing, style.hilite_padding_y * 2);
     } else {
       // horizontal, if hilite_padding_x over candidate
       // spacing, increase candidate spacing
       style.candidate_spacing =
-          max(style.candidate_spacing, style.hilite_padding_x * 2);
+          (std::max)(style.candidate_spacing, style.hilite_padding_x * 2);
     }
     // hilite_padding_x vs hilite_spacing
     if (!style.inline_preedit)
-      style.hilite_spacing = max(style.hilite_spacing, style.hilite_padding_x);
+      style.hilite_spacing =
+          (std::max)(style.hilite_spacing, style.hilite_padding_x);
   } else  // LAYOUT_VERTICAL_TEXT
   {
     // hilite_padding_x vs spacing
     // if hilite_padding over spacing, increase spacing
-    style.spacing = max(style.spacing, style.hilite_padding_x * 2);
+    style.spacing = (std::max)(style.spacing, style.hilite_padding_x * 2);
     // hilite_padding vs candidate_spacing
     // if hilite_padding_x over candidate
     // spacing, increase candidate spacing
     style.candidate_spacing =
-        max(style.candidate_spacing, style.hilite_padding_x * 2);
+        (std::max)(style.candidate_spacing, style.hilite_padding_x * 2);
     // vertical_text_with_wrap and hilite_padding_y over candidate_spacing
     if (style.vertical_text_with_wrap)
       style.candidate_spacing =
-          max(style.candidate_spacing, style.hilite_padding_y * 2);
+          (std::max)(style.candidate_spacing, style.hilite_padding_y * 2);
     // hilite_padding_y vs hilite_spacing
     if (!style.inline_preedit)
-      style.hilite_spacing = max(style.hilite_spacing, style.hilite_padding_y);
+      style.hilite_spacing =
+          (std::max)(style.hilite_spacing, style.hilite_padding_y);
   }
   if (style.layout_type == UIStyle::LAYOUT_VERTICAL_TEXT_FULLSCREEN) {
     style.max_height = 0;
   }
   // fix padding and margin settings
   int scale = style.margin_x < 0 ? -1 : 1;
-  style.margin_x = scale * max(style.hilite_padding_x, abs(style.margin_x));
+  style.margin_x = scale * (std::max)(style.hilite_padding_x, abs(style.margin_x));
   scale = style.margin_y < 0 ? -1 : 1;
-  style.margin_y = scale * max(style.hilite_padding_y, abs(style.margin_y));
+  style.margin_y = scale * (std::max)(style.hilite_padding_y, abs(style.margin_y));
   // get enhanced_position
   _RimeGetBool(config, "style/enhanced_position", initialize,
                style.enhanced_position, true, false);
