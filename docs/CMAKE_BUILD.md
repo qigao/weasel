@@ -41,6 +41,13 @@ to issues #9 and #10. This graph does not establish a source build of Rime.
 
 ## Build and test
 
+| Preset | Compiler / target | Product graph |
+| --- | --- | --- |
+| `msvc-x64` | MSVC x64 | Server, Deployer, TSF, Setup and supporting libraries |
+| `msvc-arm64` | MSVC ARM64 | TSF, Setup, candidate UI and IPC client |
+| `llvm-x64` | LLVM-MinGW x64 | TSF, Setup, candidate UI and IPC client |
+| `llvm-arm64` | LLVM-MinGW ARM64 | TSF, Setup, candidate UI and IPC client |
+
 Enter a developer prompt with `VsDevCmd.bat -arch=x64 -host_arch=x64`, then:
 
 ```bat
@@ -60,6 +67,30 @@ For ARM64, use `VsDevCmd.bat -arch=arm64 -host_arch=x64` and the
 `msvc-arm64` configure/build/install presets. Run `ctest --preset msvc-arm64`
 only on native ARM64 Windows; cross compilation establishes build results.
 
+For LLVM-MinGW, set `OPENATL_LLVM_MINGW_BIN` to the compiler's `bin` directory
+and `WEASEL_WINDOWS_SDK_BIN` to the selected Windows SDK's host `bin/<version>/x64`
+directory containing `rc.exe`. Use `llvm-x64` or `llvm-arm64` with the same
+configure/build/test/install commands. These profiles chainload the pinned OpenWTL source toolchain through
+vcpkg and use architecture-specific Boost triplets. The compiler release is
+LLVM-MinGW 20261020, archive SHA256
+`fd5462b7f5d93b2ff981fcd3f9c7e427e47f3203c64ea91c27bcc444eebd74cd`,
+matching OpenWTL 0.1.2 qualification. CI downloads and checks that archive.
+Compiler C++ runtimes are statically linked in the LLVM profiles.
+
+The selected SDK supplies the complete TSF ABI declarations absent from the
+MinGW headers and its architecture-matched UUID library. Only four SDK headers
+(`msctf.h`, `ctfutb.h`, `textstor.h`, `ctffunc.h`) are materialized in the build
+tree, with MinGW UUID bindings derived from their COM interface annotations
+using OpenWTL's GUID formatter. They are not installed or redistributed.
+MinGW continues to supply the standard Win32 and CRT headers. Native SDK RC
+handles the original UTF-16 resource files and excludes Microsoft ATL/MFC.
+
+The LLVM profiles explicitly disable Server/Deployer because the acquired
+application bundle is qualified with MSVC. Setup embeds its process manifest
+through a resource file on LLVM-MinGW. The existing native DLL tests use their
+Unicode console entry points with either compiler. Run ARM64 CTest only on an
+ARM64 Windows host; the x64 CI runner builds and stages the ARM64 products.
+
 Products are isolated in `build/<preset>/bin`; install staging is
 `build/install/<preset>`. CTest passes `$<TARGET_FILE:WeaselTSF>` to the
 existing COM factory/identity/lifetime and host exception filter tests,
@@ -77,8 +108,15 @@ existing WinSparkle import library and the Rime 1.17.0 release bundle
 Both x64 CTest DLL tests and staging of all four Weasel products passed locally.
 The existing workflow builds this graph, runs the two x64 CTest DLL tests
 and stages all four Weasel products. ARM64 retains the graph passed in #16;
-local ARM64 tools are unavailable.
+the local MSVC ARM64 toolset is unavailable.
 
-LLVM-MinGW, ARM64 application dependencies, live Server/Deployer and candidate
+LLVM-MinGW x64 TSF/Setup compilation, both native DLL tests and staging passed
+locally on 2026-11-05 with LLVM-MinGW 20261020 and Windows SDK 10.0.26100.0.
+The full MSVC x64 graph, both DLL tests and staging also passed after the
+shared source portability fixes. LLVM ARM64 TSF/Setup and both test executables
+also compiled and linked, and install staging passed. ARM64 tests have not
+been executed on a native ARM64 host.
+
+ARM64 application dependencies, live Server/Deployer and candidate
 GUI behavior, engine integration, TSF host and installer acceptance remain
 open. Build and DLL-test results do not establish those runtime gates.

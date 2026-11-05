@@ -17,9 +17,9 @@ class CDialogDpiAware : public CDialogImpl<T> {
   END_MSG_MAP()
 
   void InitCtrlRects() {
-    ::GetWindowRect(m_hWnd, &m_rect);
+    ::GetWindowRect(this->m_hWnd, &m_rect);
     EnumChildWindows(
-        m_hWnd,
+        this->m_hWnd,
         [](HWND hWnd, LPARAM lParam) {
           auto pThis = reinterpret_cast<T*>(lParam);
           RECT rect, rcDlg;
@@ -42,7 +42,7 @@ class CDialogDpiAware : public CDialogImpl<T> {
     m_currentDpi = m_initialDpi;
 
     HFONT font =
-        reinterpret_cast<HFONT>(::SendMessage(m_hWnd, WM_GETFONT, 0, 0));
+        reinterpret_cast<HFONT>(::SendMessage(this->m_hWnd, WM_GETFONT, 0, 0));
     if (font) {
       m_hasOriginalFont =
           GetObject(font, sizeof(m_originalFont), &m_originalFont) != 0;
@@ -51,7 +51,7 @@ class CDialogDpiAware : public CDialogImpl<T> {
 
  private:
   UINT GetWindowDpi() {
-    HMONITOR monitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+    HMONITOR monitor = MonitorFromWindow(this->m_hWnd, MONITOR_DEFAULTTONEAREST);
     UINT dpiX = 96, dpiY = 96;
     if (SUCCEEDED(GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY)) &&
         dpiX != 0) {
@@ -83,7 +83,7 @@ class CDialogDpiAware : public CDialogImpl<T> {
       return;
     if (m_currentFont)
       DeleteObject(m_currentFont);
-    ::SendMessage(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(newFont), TRUE);
+    ::SendMessage(this->m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(newFont), TRUE);
     for (const auto& [hWnd, rect] : m_controlOriginalRects) {
       ::SendMessage(hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(newFont), TRUE);
     }
@@ -95,7 +95,7 @@ class CDialogDpiAware : public CDialogImpl<T> {
     if (newDpi == m_currentDpi)
       return 0;
     const auto* rect = reinterpret_cast<const RECT*>(lParam);
-    ::SetWindowPos(m_hWnd, nullptr, rect->left, rect->top,
+    ::SetWindowPos(this->m_hWnd, nullptr, rect->left, rect->top,
                    rect->right - rect->left, rect->bottom - rect->top,
                    SWP_NOZORDER | SWP_NOACTIVATE);
     ScaleControlsAndFonts(newDpi);

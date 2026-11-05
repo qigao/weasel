@@ -3,6 +3,7 @@
 #include "resource.h"
 #include <atlstr.h>
 #include <CDialogDpiAware.h>
+#include <WeaselUtility.h>
 
 #define MSG_BY_IDS(idInfo, idCap, uType)           \
   {                                                \

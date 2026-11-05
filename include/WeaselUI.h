@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 #include <windows.h>
-#include <wrl.h>
+#include <wrl/client.h>
 
 namespace weasel {
 using namespace Microsoft::WRL;

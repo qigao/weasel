@@ -12,6 +12,22 @@
         "VCPKG_APPLOCAL_DEPS": "OFF",
         "WEASEL_BUILD_TESTS": "ON"
       }
+    },
+    {
+      "name": "llvm-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXE_LINKER_FLAGS": "-static",
+        "CMAKE_SHARED_LINKER_FLAGS": "-static",
+        "CMAKE_RC_COMPILER": "$env{WEASEL_WINDOWS_SDK_BIN}/rc.exe",
+        "VCPKG_APPLOCAL_DEPS": "OFF",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/triplets",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{WEASEL_LLVM_TOOLCHAIN}",
+        "WEASEL_BUILD_APPLICATIONS": "OFF",
+        "WEASEL_BUILD_TESTS": "ON"
+      }
     }
   ]
 }

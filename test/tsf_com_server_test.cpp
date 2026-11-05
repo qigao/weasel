@@ -4,8 +4,10 @@
 #include <msctf.h>
 #include <stdio.h>
 
+#ifdef _MSC_VER
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "uuid.lib")
+#endif
 
 namespace {
 const CLSID kWeaselTsf = {

@@ -1,6 +1,6 @@
 #pragma once
 #include <WeaselUI.h>
-#include "ctffunc.h"
+#include <ctffunc.h>
 #include <atomic>
 #include <openatl/com_server.h>
 

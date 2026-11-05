@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <sstream>
+#include <vector>
 #include <wrl/client.h>
 using namespace Microsoft::WRL;
 
@@ -121,26 +122,26 @@ struct EscapeChar {
 };
 
 template <>
-const char EscapeChar<char>::escape = '\\';
+inline const char EscapeChar<char>::escape = '\\';
 template <>
-const char EscapeChar<char>::linefeed = '\n';
+inline const char EscapeChar<char>::linefeed = '\n';
 template <>
-const char EscapeChar<char>::tab = '\t';
+inline const char EscapeChar<char>::tab = '\t';
 template <>
-const char EscapeChar<char>::linefeed_escape = 'n';
+inline const char EscapeChar<char>::linefeed_escape = 'n';
 template <>
-const char EscapeChar<char>::tab_escape = 't';
+inline const char EscapeChar<char>::tab_escape = 't';
 
 template <>
-const wchar_t EscapeChar<wchar_t>::escape = L'\\';
+inline const wchar_t EscapeChar<wchar_t>::escape = L'\\';
 template <>
-const wchar_t EscapeChar<wchar_t>::linefeed = L'\n';
+inline const wchar_t EscapeChar<wchar_t>::linefeed = L'\n';
 template <>
-const wchar_t EscapeChar<wchar_t>::tab = L'\t';
+inline const wchar_t EscapeChar<wchar_t>::tab = L'\t';
 template <>
-const wchar_t EscapeChar<wchar_t>::linefeed_escape = L'n';
+inline const wchar_t EscapeChar<wchar_t>::linefeed_escape = L'n';
 template <>
-const wchar_t EscapeChar<wchar_t>::tab_escape = L't';
+inline const wchar_t EscapeChar<wchar_t>::tab_escape = L't';
 
 template <typename CharT>
 inline std::basic_string<CharT> escape_string(
