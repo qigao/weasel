@@ -24,13 +24,20 @@ escaped text, multiple candidates with labels and comments, empty candidates,
 optional output destinations, terminators, incomplete input, malformed lines,
 inactive actions and incomplete cursor fields. Valid responses include the
 protocol's `.\n` terminator, and tests check the parser's completion result.
+The suite now has 31 cases, including rollback of every output on incomplete or
+malformed responses, malformed archive headers and extraction failures,
+recovery and action isolation on parser reuse, independent optional destinations,
+and exact/over-limit receive lengths. See the
+[publication contract](../../docs/RESPONSE_PARSER.md).
 
 TinyTest supplies `main()` and reports each case in TAP. CTest also requests
 `response-parser.xml` in the profile's `test/TestResponseParser` build directory;
 the Windows workflow uploads these JUnit reports even when a test fails.
 Fatal checks remain enabled in Release and return a failing process status.
 
-This suite tests the existing text/archive protocol. Bounded framing, malformed
-archive recovery and atomic publication belong to the protocol migration in
-issue #2. The manual `TestWeaselIPC` console is a separate tool; isolated IPC,
+This suite tests the existing text/archive protocol. Parsing is transactional
+on its owner thread and archive errors return failure without a dialog. The
+outer input limit does not bound allocations from malicious archive counts;
+the replacement wire schema and its field limits remain part of issue #2.
+The manual `TestWeaselIPC` console is a separate tool; isolated IPC,
 authorization and TSF integration tests remain tracked by issues #1–#4 and #6.

@@ -2,6 +2,10 @@
 #include <StringAlgorithm.hpp>
 #include <WeaselIPC.h>
 #include "Deserializer.h"
+#include <exception>
+#include <optional>
+#include <type_traits>
+#include <utility>
 
 using namespace weasel;
 
@@ -14,25 +18,54 @@ ResponseParser::ResponseParser(std::wstring* commit,
       p_context(context),
       p_status(status),
       p_config(config),
-      p_style(style) {
-  Deserializer::Initialize(this);
-}
+      p_style(style) {}
 
 bool ResponseParser::operator()(LPWSTR buffer, UINT length) {
-  wbufferstream bs(buffer, length);
-  std::wstring line;
-  while (bs.good()) {
-    std::getline(bs, line);
-    if (!bs.good())
-      return false;
+  if (!buffer || length == 0 || length > kMaxResponseLength)
+    return false;
 
-    // file ends
-    if (line == L".")
-      break;
+  // Publication cannot allocate or throw after the first output is changed.
+  static_assert(std::is_nothrow_swappable_v<std::wstring>);
+  static_assert(std::is_nothrow_swappable_v<Context>);
+  static_assert(std::is_nothrow_swappable_v<Status>);
+  static_assert(std::is_nothrow_swappable_v<Config>);
+  static_assert(std::is_nothrow_swappable_v<UIStyle>);
+  try {
+    std::optional<std::wstring> commit;
+    std::optional<Context> context;
+    std::optional<Status> status;
+    std::optional<Config> config;
+    std::optional<UIStyle> style;
+    if (p_commit) commit.emplace(*p_commit);
+    if (p_context) context.emplace(*p_context);
+    if (p_status) status.emplace(*p_status);
+    if (p_config) config.emplace(*p_config);
+    if (p_style) style.emplace(*p_style);
 
-    Feed(line);
+    ResponseParser staged(commit ? &*commit : nullptr,
+                          context ? &*context : nullptr,
+                          status ? &*status : nullptr,
+                          config ? &*config : nullptr,
+                          style ? &*style : nullptr);
+    Deserializer::Initialize(&staged);
+    wbufferstream stream(buffer, length);
+    std::wstring line;
+    while (std::getline(stream, line) && !stream.eof()) {
+      if (line == L".") {
+        using std::swap;
+        if (p_commit) swap(*p_commit, *commit);
+        if (p_context) swap(*p_context, *context);
+        if (p_status) swap(*p_status, *status);
+        if (p_config) swap(*p_config, *config);
+        if (p_style) swap(*p_style, *style);
+        return true;
+      }
+      staged.Feed(line);
+    }
+  } catch (const std::exception&) {
+    // Malformed archives and allocation failures are rejected at the host boundary.
   }
-  return bs.good();
+  return false;
 }
 
 void ResponseParser::Feed(const std::wstring& line) {

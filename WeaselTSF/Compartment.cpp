@@ -301,7 +301,8 @@ HRESULT WeaselTSF::_HandleCompartment(REFGUID guidCompartment) {
       weasel::ResponseParser parser(NULL, NULL, &_status, NULL,
                                     &_cand->style());
       bool ok = m_client.GetResponseData(std::ref(parser));
-      _UpdateLanguageBar(_status);
+      if (ok)
+        _UpdateLanguageBar(_status);
     }
   }
   return S_OK;
