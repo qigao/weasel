@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <windows.h>
-#include <wrl.h>
+#include <wrl/client.h>
 #include "UIStyleSettings.h"
 
 using namespace Microsoft::WRL;

@@ -220,7 +220,7 @@ jobs:
           if (-not (Test-Path (Join-Path $sdkBin 'rc.exe'))) { throw 'Selected Windows SDK resource compiler is missing' }
           "WEASEL_WINDOWS_SDK_BIN=$($sdkBin.Replace('\', '/'))" | Out-File $env:GITHUB_ENV -Append
 
-      - name: Build LLVM-MinGW x64 and ARM64 TSF and Setup
+      - name: Build LLVM-MinGW x64 applications and ARM64 TSF and Setup
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'

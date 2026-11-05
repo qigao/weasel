@@ -1,7 +1,7 @@
 # The existing acquisition workflow produces one x64 dependency bundle in
 # include/, lib64/ and output/. Do not search for another Rime or WinSparkle.
-if(NOT MSVC OR NOT WEASEL_TARGET_ARCH STREQUAL "x64")
-  message(FATAL_ERROR "Server/Deployer currently require MSVC x64 and its Rime/WinSparkle bundle")
+if(NOT WEASEL_TARGET_ARCH STREQUAL "x64")
+  message(FATAL_ERROR "Server/Deployer require the acquired x64 Rime/WinSparkle bundle")
 endif()
 if(NOT DEFINED ENV{WEASEL_DEPENDENCY_ROOT} OR
    NOT IS_DIRECTORY "$ENV{WEASEL_DEPENDENCY_ROOT}")

@@ -9,7 +9,9 @@
 
 class WeaselService {
  public:
-  WeaselService(BOOL fCanStop, BOOL fCanShutdown, BOOL fCanPauseContinue);
+  WeaselService(BOOL fCanStop = TRUE,
+                BOOL fCanShutdown = TRUE,
+                BOOL fCanPauseContinue = FALSE);
   ~WeaselService();
   static BOOL Run(WeaselService& serv);
 
